@@ -21,10 +21,10 @@ import logging
 import os
 
 from dotenv import load_dotenv
+from dataclasses import dataclass
 import psycopg2
 from openai import AzureOpenAI
 from pgvector.psycopg2 import register_vector
-from dataclasses import dataclass
 
 from db.query_store import QueryStore
 
@@ -55,7 +55,6 @@ class VectorDB:
         load_dotenv()
         if not config.dbname.isidentifier():
             raise ValueError("The database name must be a valid identifier.")
-        
         self.dbname = config.dbname
         self.user = config.user
         self.password = config.password
@@ -65,16 +64,18 @@ class VectorDB:
 
         self.embedding_api_key = os.getenv("OPENAI_EMBEDDING_MODEL_API_KEY")
         if not self.embedding_api_key:
-            raise ValueError("The OpenAI API key for embedding model is not set in the environment variables.")
+            raise ValueError(
+                "The OpenAI API key for embedding model is not set in the environment variables."
+            )
         
         self.baseUrl = "https://oai-hackathon-ofa.openai.azure.com/"
-        self.instanceName = "oai-hackathon-ofa"
+        self.instance_name = "oai-hackathon-ofa"
         self.api_version = "2024-02-01"
 
         if config.embedding_model is None:
             self.embedding_model = AzureOpenAI(
-                api_version=self.api_version, 
-                azure_endpoint=self.baseUrl,    
+                api_version=self.api_version,
+                azure_endpoint=self.baseUrl,
                 api_key=self.embedding_api_key,
             )
         else:
@@ -101,18 +102,6 @@ class VectorDB:
             self._connect_to_postgres()
         except psycopg2.OperationalError as e:
             logging.error("Operational error during PostgreSQL connection: %s", e)
-            raise
-
-        try:
-            self._create_database_if_not_exists()
-        except psycopg2.Error as e:
-            logging.error("Error creating database if not exists: %s", e)
-            raise
-
-        try:
-            self._connect_to_vector_db()
-        except psycopg2.OperationalError as e:
-            logging.error("Operational error during vector database connection: %s", e)
             raise
 
         try:
@@ -151,10 +140,10 @@ class VectorDB:
                     host=self.host, port=self.port
                 )
             else:
-                self.conn = psycopg2.connect(    
-                    dbname=self.dbname,    
-                    user=self.user,    
-                    password=self.password,    
+                self.conn = psycopg2.connect(
+                    dbname=self.dbname,
+                    user=self.user,
+                    password=self.password,
                     host=self.host
                 )
                 self.conn.autocommit = True
@@ -200,12 +189,9 @@ class VectorDB:
             raise
 
     def store_text(self, statement_name, **columns):
-        
         # if not self.is_connected:
         #     raise RuntimeError("Database connection is not established. Call setup() first.")
-
         sql_statement = QueryStore.get_sql(statement_name, **columns)
-
         try:
             self.cursor.execute(sql_statement)
             self.conn.commit()
@@ -363,21 +349,23 @@ class VectorDB:
 
     
 def format_output(string:str) -> str:
+    """
+    Formats the output string by replacing escape sequences with actual characters.
+    Returns the formatted string.
+    """
     formatted_res = string.replace("\\r\\n", "\n")
     formatted_res = formatted_res.replace("\\r\\r", "\n")
     return formatted_res.replace("\\n", "\n")
 
 if __name__ == "__main__":
-
-    import json
-
     PG_PWD = os.getenv("PG_PWD")
-
     client = VectorDB(
-        dbname="hackathon_ofa",
-        user="hackathon_ofa",
-        password=PG_PWD,    
-        host="hackathon-ofa.postgres.database.azure.com"
+        DBConfig(
+            dbname="hackathon_ofa",
+            user="hackathon_ofa",
+            password=PG_PWD,
+            host="hackathon-ofa.postgres.database.azure.com"
+        )
     )
 
     descr = client.describe_database()

@@ -1,6 +1,7 @@
 """
 This module contains functions to create and drop tables in the database.
-It uses the `VectorDB` class to execute SQL commands for creating and dropping tables related to Jira issues and subtasks.
+It uses the `VectorDB` class to execute SQL commands for creating and dropping 
+tables related to Jira issues and subtasks.
 It also includes logging to track the success or failure of these operations.
 """
 
@@ -21,7 +22,7 @@ client = VectorDB(
     DBConfig(
         dbname="hackathon_ofa",
         user="hackathon_ofa",
-        password=PG_PWD,    
+        password=PG_PWD,
         host="hackathon-ofa.postgres.database.azure.com"
     )
 )

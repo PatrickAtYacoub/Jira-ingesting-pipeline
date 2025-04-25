@@ -17,8 +17,8 @@ from jira_tools.factory import JiraFactory
 from jira_tools.ingestor import JiraIngestor
 from db.vectordb_client import VectorDB, DBConfig
 
-# ------------------------------------------------------------------------------
-# Configuration & Logging
+# ------------------------------------------------------------------------------ 
+# Configuration & Logging 
 # ------------------------------------------------------------------------------
 
 logging.basicConfig(level=logging.INFO)
@@ -27,6 +27,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Config:
+    """
+    Configuration class to hold environment variables and database credentials.
+    """
     jira_url: str
     jira_email: str
     jira_token: str
@@ -37,6 +40,10 @@ class Config:
 
     @staticmethod
     def load_from_env() -> "Config":
+        """
+        Load configuration from environment variables.
+        Raises an error if required variables are missing.
+        """
         dotenv.load_dotenv()
 
         jira_email = os.getenv("EMAIL")
@@ -62,11 +69,14 @@ class Config:
         )
 
 
-# ------------------------------------------------------------------------------
-# Main Execution
+# ------------------------------------------------------------------------------ 
+# Main Execution 
 # ------------------------------------------------------------------------------
 
 def main():
+    """
+    Main function to fetch Jira issues, process them, and ingest them into the database.
+    """
     # Load configuration and initialize clients
     config = Config.load_from_env()
     jira_client = JIRA(server=config.jira_url, basic_auth=(config.jira_email, config.jira_token))
@@ -79,7 +89,7 @@ def main():
     stories = [issue for issue in parsed_issues if isinstance(issue, JiraStory)]
     subtasks = [issue for issue in parsed_issues if isinstance(issue, JiraSubtask)]
 
-    logger.info(f"Stories: {len(stories)}, Subtasks: {len(subtasks)}")
+    logger.info("Stories: %d, Subtasks: %d", len(stories), len(subtasks))
 
     print_issues("Stories", stories)
     print_issues("Subtasks", subtasks)
@@ -97,24 +107,30 @@ def main():
     ingestor.ingest_bulk(issues=stories, subtasks=subtasks)
 
 
-# ------------------------------------------------------------------------------
-# Helper Functions
+# ------------------------------------------------------------------------------ 
+# Helper Functions 
 # ------------------------------------------------------------------------------
 
 def fetch_issues(jira_client: JIRA, jql: str) -> List:
+    """
+    Fetch issues from Jira using the provided JQL query.
+    """
     issues = jira_client.search_issues(jql)
-    logger.info(f"Number of issues found: {len(issues)}")
+    logger.info("Number of issues found: %d", len(issues))
     return issues
 
 
 def print_issues(title: str, issues: List):
+    """
+    Print a list of issues with a given title.
+    """
     print(f"\n{title}:")
     for issue in issues:
         print(issue.to_string(detailed=True))
 
 
-# ------------------------------------------------------------------------------
-# Entry Point
+# ------------------------------------------------------------------------------ 
+# Entry Point 
 # ------------------------------------------------------------------------------
 
 if __name__ == "__main__":

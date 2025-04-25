@@ -1,12 +1,13 @@
 """
-This module defines Pydantic models for representing Jira entities such as users, worklogs, issues, subtasks, and stories.
-These models provide a structured way to handle Jira data and include methods for generating string representations.
+This module defines Pydantic models for representing Jira entities such as users, worklogs, issues,
+subtasks, and stories. These models provide a structured way to handle Jira data and include methods
+for generating string representations.
 """
 
-from typing import Optional, List
-from pydantic import BaseModel, HttpUrl, Field
 from datetime import datetime
 from textwrap import indent
+from typing import Optional, List
+from pydantic import BaseModel, HttpUrl, Field
 
 
 class JiraUser(BaseModel):
@@ -27,7 +28,7 @@ class JiraUser(BaseModel):
         """
         Returns a string representation of the user.
         """
-        return self.__str__()
+        return str(self)
 
 
 class JiraWorklog(BaseModel):
@@ -50,7 +51,7 @@ class JiraWorklog(BaseModel):
         """
         Returns a string representation of the worklog.
         """
-        return self.__str__()
+        return str(self)
 
 
 class JiraBaseIssue(BaseModel):

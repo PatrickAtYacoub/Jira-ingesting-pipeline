@@ -1,6 +1,7 @@
 """
 This module contains functions to create and drop tables in the database.
-It uses the `VectorDB` class to execute SQL commands for creating and dropping tables related to Jira issues and subtasks.
+It uses the `VectorDB` class to execute SQL commands for creating and dropping 
+tables related to Jira issues and subtasks.
 It also includes logging to track the success or failure of these operations.
 """
 
@@ -62,25 +63,25 @@ class JiraFactory:
             is a subtask, otherwise a JiraStory instance.
 
         Raises:
-            
+
         """
         fields = issue.fields
-        base_kwargs = dict(
-            key=issue.key,
-            summary=fields.summary,
-            description=fields.description if fields.description else "No description",
-            status=fields.status.name,
-            statusCategory=fields.status.statusCategory.name,
-            project=fields.project.name,
-            issue_type=fields.issuetype.name,
-            assignee=JiraFactory.parse_user(fields.assignee),
-            reporter=JiraFactory.parse_user(fields.reporter),
-            created=fields.created,
-            updated=fields.updated,
-            timeSpentSeconds=fields.timespent,
-            url=issue.self,
-            worklogs=JiraFactory.parse_worklogs(fields.worklog)
-        )
+        base_kwargs = {
+            "key": issue.key,
+            "summary": fields.summary,
+            "description": fields.description if fields.description else "No description",
+            "status": fields.status.name,
+            "statusCategory": fields.status.statusCategory.name,
+            "project": fields.project.name,
+            "issue_type": fields.issuetype.name,
+            "assignee": JiraFactory.parse_user(fields.assignee),
+            "reporter": JiraFactory.parse_user(fields.reporter),
+            "created": fields.created,
+            "updated": fields.updated,
+            "timeSpentSeconds": fields.timespent,
+            "url": issue.self,
+            "worklogs": JiraFactory.parse_worklogs(fields.worklog),
+        }
 
         if fields.issuetype.subtask:
             return JiraSubtask(
@@ -88,7 +89,4 @@ class JiraFactory:
                 parent_key=fields.parent.key,
                 parent_summary=fields.parent.fields.summary
             )
-        else:
-            return JiraStory(
-                **base_kwargs
-            )
+        return JiraStory(**base_kwargs)

@@ -119,7 +119,7 @@ class JiraIngestor:
 
         # Then, ingest subtasks, ensuring that the parent issue exists
         for subtask in subtasks:
-            # Check if the parent issue exists in the database 
+            # Check if the parent issue exists in the database
             parent_issue_exists = self.client.execute_sql(
                 "issue_exists", 
                 key=subtask.parent_key
@@ -127,6 +127,6 @@ class JiraIngestor:
             if parent_issue_exists[0][0]:
                 self.ingest_subtask(subtask)
             else:
-                logging.warning("Parent issue %s not found for subtask %s", 
+                logging.warning("Parent issue %s not found for subtask %s",
                                 subtask.parent_key, subtask.key
                                 )
