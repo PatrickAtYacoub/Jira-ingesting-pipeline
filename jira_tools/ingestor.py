@@ -1,3 +1,10 @@
+"""
+This module contains functions to create and drop tables in the database.
+It uses the `VectorDB` class to execute SQL commands for creating and dropping tables
+related to Jira issues and subtasks.
+It also includes logging to track the success or failure of these operations.
+"""
+
 import logging
 from typing import List
 from db.vectordb_client import VectorDB
@@ -49,9 +56,15 @@ class JiraIngestor:
                 time_spent_seconds=issue.timeSpentSeconds or 0,
                 url=str(issue.url)
             )
-            logging.info(f"Ingested Jira Issue: {issue.key}")
+            logging.info("Ingested Jira Issue: %s", issue.key)
+        except AttributeError as e:
+            logging.error("Attribute error while ingesting Jira Issue %s: %s", issue.key, e)
+        except KeyError as e:
+            logging.error("Key error while ingesting Jira Issue %s: %s", issue.key, e)
+        except ValueError as e:
+            logging.error("Value error while ingesting Jira Issue %s: %s", issue.key, e)
         except Exception as e:
-            logging.error(f"Error ingesting Jira Issue {issue.key}: {e}")
+            logging.error("Unexpected error ingesting Jira Issue %s: %s", issue.key, e)
 
     def ingest_subtask(self, subtask: JiraSubtask):
         """
@@ -79,9 +92,15 @@ class JiraIngestor:
                 time_spent_seconds=subtask.timeSpentSeconds or 0,
                 url=str(subtask.url)
             )
-            logging.info(f"Ingested Jira Subtask: {subtask.key}")
+            logging.info("Ingested Jira Subtask: %s", subtask.key)
+        except AttributeError as e:
+            logging.error("Attribute error while ingesting Jira Subtask %s: %s", subtask.key, e)
+        except KeyError as e:
+            logging.error("Key error while ingesting Jira Subtask %s: %s", subtask.key, e)
+        except ValueError as e:
+            logging.error("Value error while ingesting Jira Subtask %s: %s", subtask.key, e)
         except Exception as e:
-            logging.error(f"Error ingesting Jira Subtask {subtask.key}: {e}")
+            logging.error("Unexpected error ingesting Jira Subtask %s: %s", subtask.key, e)
 
     def ingest_bulk(self, issues: List[JiraStory], subtasks: List[JiraSubtask]):
         """
@@ -100,7 +119,7 @@ class JiraIngestor:
 
         # Then, ingest subtasks, ensuring that the parent issue exists
         for subtask in subtasks:
-            # Check if the parent issue exists in the database (this may require a separate query or state tracking)
+            # Check if the parent issue exists in the database 
             parent_issue_exists = self.client.execute_sql(
                 "issue_exists", 
                 key=subtask.parent_key
@@ -108,4 +127,6 @@ class JiraIngestor:
             if parent_issue_exists[0][0]:
                 self.ingest_subtask(subtask)
             else:
-                logging.warning(f"Parent issue {subtask.parent_key} not found for subtask {subtask.key}")
+                logging.warning("Parent issue %s not found for subtask %s", 
+                                subtask.parent_key, subtask.key
+                                )

@@ -1,3 +1,9 @@
+"""
+This module contains functions to create and drop tables in the database.
+It uses the `VectorDB` class to execute SQL commands for creating and dropping tables related to Jira issues and subtasks.
+It also includes logging to track the success or failure of these operations.
+"""
+
 from typing import Optional, List, Union
 from model.jira_models import JiraUser, JiraWorklog, JiraSubtask, JiraStory
 
@@ -17,6 +23,8 @@ class JiraFactory:
         Returns:
             Optional[JiraUser]: A JiraUser instance if the user object is valid, 
             otherwise None.
+        Raises:
+            ValueError: If the user object is invalid or missing required attributes.
         """
         if user:
             return JiraUser(displayName=user.displayName, emailAddress=user.emailAddress)
@@ -31,6 +39,9 @@ class JiraFactory:
         Returns:
             List[JiraWorklog]: A list of JiraWorklog instances if the worklog 
             object contains worklogs, otherwise an empty list.
+
+        Raises:
+            ValueError: If the worklog object is invalid or missing required attributes.
         """
         return [
             JiraWorklog(
@@ -49,6 +60,9 @@ class JiraFactory:
         Returns:
             Union[JiraSubtask, JiraStory]: A JiraSubtask instance if the issue 
             is a subtask, otherwise a JiraStory instance.
+
+        Raises:
+            
         """
         fields = issue.fields
         base_kwargs = dict(

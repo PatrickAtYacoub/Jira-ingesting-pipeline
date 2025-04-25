@@ -1,3 +1,9 @@
+"""
+This module contains functions to create and drop tables in the database.
+It uses the `VectorDB` class to execute SQL commands for creating and dropping tables related to Jira issues and subtasks.
+It also includes logging to track the success or failure of these operations.
+"""
+
 import os
 import logging
 from dataclasses import dataclass
@@ -9,7 +15,7 @@ from jira import JIRA
 from model.jira_models import JiraStory, JiraSubtask
 from jira_tools.factory import JiraFactory
 from jira_tools.ingestor import JiraIngestor
-from db.vectordb_client import VectorDB
+from db.vectordb_client import VectorDB, DBConfig
 
 # ------------------------------------------------------------------------------
 # Configuration & Logging
@@ -80,10 +86,12 @@ def main():
 
     # Initialize DB and ingest
     db_client = VectorDB(
-        dbname=config.pg_dbname,
-        user=config.pg_user,
-        password=config.pg_password,
-        host=config.pg_host
+        DBConfig(
+            dbname=config.pg_dbname,
+            user=config.pg_user,
+            password=config.pg_password,
+            host=config.pg_host
+        )
     )
     ingestor = JiraIngestor(db_client)
     ingestor.ingest_bulk(issues=stories, subtasks=subtasks)

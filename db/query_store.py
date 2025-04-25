@@ -89,13 +89,18 @@ class QueryStore:
 
         # ===== INDEX CREATION ==================================
         "insert_jira_issue": """
-        INSERT INTO jira_issue (key, summary, summary_vector, description, description_vector, issue_type, status, status_category, project, assignee, reporter, created, updated, time_spent_seconds, url)
-        VALUES ('{key}', '{summary}', '{summary_vector}', '{description}', '{description_vector}', '{issue_type}', '{status}', '{status_category}', '{project}', '{assignee}', '{reporter}', '{created}', '{updated}', {time_spent_seconds}, '{url}');
+        INSERT INTO jira_issue (key, summary, summary_vector, description, description_vector, issue_type, status, 
+        status_category, project, assignee, reporter, created, updated, time_spent_seconds, url)
+        VALUES ('{key}', '{summary}', '{summary_vector}', '{description}', '{description_vector}', '{issue_type}', 
+        '{status}', '{status_category}', '{project}', '{assignee}', '{reporter}', '{created}', '{updated}', 
+        {time_spent_seconds}, '{url}');
         """,
 
         "insert_jira_subtask": """
-        INSERT INTO jira_subtask (key, parent_key, summary, summary_vector, status, status_category, assignee, created, updated, time_spent_seconds, url)
-        VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{status}', '{status_category}', '{assignee}', '{created}', '{updated}', {time_spent_seconds}, '{url}');
+        INSERT INTO jira_subtask (key, parent_key, summary, summary_vector, status, status_category, assignee, 
+        created, updated, time_spent_seconds, url)
+        VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{status}', '{status_category}', 
+        '{assignee}', '{created}', '{updated}', {time_spent_seconds}, '{url}');
         """,
 
         "issue_exists": """
@@ -107,5 +112,4 @@ class QueryStore:
     def get_sql(query_name, **params):
         if query_name in QueryStore.SQL_TEMPLATES:
             return QueryStore.SQL_TEMPLATES[query_name].format(**params)
-        else:
-            raise ValueError(f"Query '{query_name}' not found in PromptStore.")
+        raise ValueError(f"Query '{query_name}' not found in PromptStore.")
