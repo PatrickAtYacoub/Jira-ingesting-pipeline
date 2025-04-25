@@ -1,6 +1,7 @@
 """
 This module contains functions to create and drop tables in the database.
-It uses the `VectorDB` class to execute SQL commands for creating and dropping tables related to Jira issues and subtasks.
+It uses the `VectorDB` class to execute SQL commands for creating and dropping 
+tables related to Jira issues and subtasks.
 It also includes logging to track the success or failure of these operations.
 """
 
@@ -17,7 +18,7 @@ from jira_tools.factory import JiraFactory
 from jira_tools.ingestor import JiraIngestor
 from db.vectordb_client import VectorDB, DBConfig
 
-# ------------------------------------------------------------------------------ 
+# ------------------------------------------------------------------------------
 # Configuration & Logging 
 # ------------------------------------------------------------------------------
 
@@ -69,7 +70,7 @@ class Config:
         )
 
 
-# ------------------------------------------------------------------------------ 
+# ------------------------------------------------------------------------------
 # Main Execution 
 # ------------------------------------------------------------------------------
 
@@ -82,7 +83,7 @@ def main():
     jira_client = JIRA(server=config.jira_url, basic_auth=(config.jira_email, config.jira_token))
 
     # Fetch and parse issues
-    issues = fetch_issues(jira_client, jql="project=DATA AND assignee=currentUser()")
+    issues = fetch_issues(jira_client, jql="project=DATA")
     parsed_issues = [JiraFactory.create_issue(issue) for issue in issues]
 
     # Separate stories and subtasks
@@ -107,7 +108,7 @@ def main():
     ingestor.ingest_bulk(issues=stories, subtasks=subtasks)
 
 
-# ------------------------------------------------------------------------------ 
+# ------------------------------------------------------------------------------
 # Helper Functions 
 # ------------------------------------------------------------------------------
 
@@ -129,8 +130,8 @@ def print_issues(title: str, issues: List):
         print(issue.to_string(detailed=True))
 
 
-# ------------------------------------------------------------------------------ 
-# Entry Point 
+# ------------------------------------------------------------------------------
+# Entry Point
 # ------------------------------------------------------------------------------
 
 if __name__ == "__main__":

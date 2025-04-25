@@ -28,7 +28,10 @@ class JiraFactory:
             ValueError: If the user object is invalid or missing required attributes.
         """
         if user:
-            return JiraUser(displayName=user.displayName, emailAddress=user.emailAddress)
+            return JiraUser(
+                displayName=user.displayName, 
+                emailAddress=getattr(user, "emailAddress", "No Person assigned.")
+            )
         return None
 
     @staticmethod

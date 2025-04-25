@@ -18,12 +18,13 @@ class JiraUser(BaseModel):
         displayName (str): The display name of the user.
         emailAddress (str): The email address of the user.
     """
+
     displayName: str
     emailAddress: str
 
     def __str__(self) -> str:
         return f"{self.displayName} <{self.emailAddress}>"
-    
+
     def to_string(self) -> str:
         """
         Returns a string representation of the user.
@@ -40,13 +41,14 @@ class JiraWorklog(BaseModel):
         timeSpent (str): The time spent on the worklog in human-readable format.
         timeSpentSeconds (int): The time spent on the worklog in seconds.
     """
+
     started: datetime
     timeSpent: str
     timeSpentSeconds: int
 
     def __str__(self) -> str:
         return f"{self.timeSpent} ({self.timeSpentSeconds} seconds)"
-    
+
     def to_string(self) -> str:
         """
         Returns a string representation of the worklog.
@@ -74,6 +76,7 @@ class JiraBaseIssue(BaseModel):
         url (HttpUrl): The URL to the issue in Jira.
         worklogs (List[JiraWorklog]): A list of worklogs associated with the issue.
     """
+
     key: str
     summary: str
     description: str
@@ -118,7 +121,7 @@ class JiraBaseIssue(BaseModel):
             f"Created:     {self.created}",
             f"Updated:     {self.updated}",
             f"Time Spent:  {self.timeSpentSeconds // 3600 if self.timeSpentSeconds else 0}h",
-            f"Link:        {self.url}"
+            f"Link:        {self.url}",
         ]
         return base + "\n" + indent("\n".join(details), prefix="  ")
 
@@ -131,6 +134,7 @@ class JiraSubtask(JiraBaseIssue):
         parent_key (str): The key of the parent issue.
         parent_summary (str): The summary of the parent issue.
     """
+
     parent_key: str
     parent_summary: str
 
@@ -158,6 +162,7 @@ class JiraStory(JiraBaseIssue):
     Attributes:
         subtasks (List[JiraSubtask]): A list of subtasks associated with the story.
     """
+
     subtasks: List[JiraSubtask] = Field(default_factory=list)
 
     def to_string(self, detailed: bool = False) -> str:
@@ -172,6 +177,8 @@ class JiraStory(JiraBaseIssue):
         """
         base = super().to_string(detailed)
         if detailed and self.subtasks:
-            subs = "\n".join(f"  - {s.to_string(detailed=False)}" for s in self.subtasks)
+            subs = "\n".join(
+                f"  - {s.to_string(detailed=False)}" for s in self.subtasks
+            )
             return base + "\n  Subtasks:\n" + indent(subs, "    ")
         return base

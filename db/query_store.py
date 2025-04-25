@@ -1,7 +1,7 @@
 """
 prompt_store.py
 
-This module defines the `PromptStore` class, which provides a centralized way to manage SQL query templates
+Defines the `PromptStore` class, which provides a centralized way to manage SQL query templates
 and generate SQL statements dynamically by substituting parameters into predefined templates.
 
 Features:
@@ -19,17 +19,20 @@ class QueryStore:
     """
     prompt_store.py
     ===============
-    This module defines the `PromptStore` class, which provides a centralized way to manage SQL query templates 
-    and generate SQL statements dynamically by substituting parameters into predefined templates.
+    This module defines the `PromptStore` class, which provides a centralized way 
+    to manage SQL query templates and generate SQL statements dynamically by substituting parameters
+    into predefined templates.
     Classes:
     --------
     - PromptStore: A utility class for managing and formatting SQL query templates.
     Usage:
     ------
-    The `PromptStore` class contains a dictionary of SQL templates (`SQL_TEMPLATES`) for various database operations 
-    such as inserting, updating, deleting, and searching records. The `get_sql` method allows users to retrieve 
+    The `PromptStore` class contains a dictionary of SQL templates (`SQL_TEMPLATES`) 
+    for various database operations such as inserting, updating, deleting, and searching records.
+    The `get_sql` method allows users to retrieve
     and format a specific SQL query by providing the query name and the required parameters.
     """
+
     SQL_TEMPLATES = {
         # ===== TABLE CREATION =================================
         "create_jira_issue_table": """
@@ -51,7 +54,6 @@ class QueryStore:
             url TEXT
         );
         """,
-
         "create_jira_subtask_table": """
         CREATE TABLE jira_subtask (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -68,25 +70,20 @@ class QueryStore:
             url TEXT
         );
         """,
-
         # ===== TABLE DELETION ================================
         "delete_jira_issue": """
         DELETE FROM jira_issue WHERE key = '{key}';
         """,
-
         "delete_jira_subtask": """
         DELETE FROM jira_subtask WHERE key = '{key}';
         """,
-
         # ===== TABLE DROP ===============================
         "drop_jira_issue_table": """
         DROP TABLE IF EXISTS jira_issue;
         """,
-
         "drop_jira_subtask_table": """
         DROP TABLE IF EXISTS jira_subtask;
         """,
-
         # ===== INDEX CREATION ==================================
         "insert_jira_issue": """
         INSERT INTO jira_issue (key, summary, summary_vector, description, description_vector, issue_type, status, 
@@ -95,14 +92,12 @@ class QueryStore:
         '{status}', '{status_category}', '{project}', '{assignee}', '{reporter}', '{created}', '{updated}', 
         {time_spent_seconds}, '{url}');
         """,
-
         "insert_jira_subtask": """
         INSERT INTO jira_subtask (key, parent_key, summary, summary_vector, status, status_category, assignee, 
         created, updated, time_spent_seconds, url)
         VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{status}', '{status_category}', 
         '{assignee}', '{created}', '{updated}', {time_spent_seconds}, '{url}');
         """,
-
         "issue_exists": """
         SELECT EXISTS(SELECT 1 FROM jira_issue WHERE key = '{key}');
         """,
@@ -110,6 +105,12 @@ class QueryStore:
 
     @staticmethod
     def get_sql(query_name, **params):
+        """
+        Retrieves and formats a SQL query template by substituting parameters into the template.
+        Returns the formatted SQL query string.
+        Raises:
+            ValueError: If the query name is not found in the SQL_TEMPLATES dictionary.
+        """
         if query_name in QueryStore.SQL_TEMPLATES:
             return QueryStore.SQL_TEMPLATES[query_name].format(**params)
         raise ValueError(f"Query '{query_name}' not found in PromptStore.")
