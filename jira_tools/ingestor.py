@@ -63,7 +63,7 @@ class JiraIngestor:
             logging.error("Key error while ingesting Jira Issue %s: %s", issue.key, e)
         except ValueError as e:
             logging.error("Value error while ingesting Jira Issue %s: %s", issue.key, e)
-        except Exception as e:
+        except (TypeError, RuntimeError) as e:
             logging.error("Unexpected error ingesting Jira Issue %s: %s", issue.key, e)
 
     def ingest_subtask(self, subtask: JiraSubtask):
@@ -99,7 +99,7 @@ class JiraIngestor:
             logging.error("Key error while ingesting Jira Subtask %s: %s", subtask.key, e)
         except ValueError as e:
             logging.error("Value error while ingesting Jira Subtask %s: %s", subtask.key, e)
-        except Exception as e:
+        except (TypeError, RuntimeError) as e:  # Replace with specific exceptions relevant to your code
             logging.error("Unexpected error ingesting Jira Subtask %s: %s", subtask.key, e)
 
     def ingest_bulk(self, issues: List[JiraStory], subtasks: List[JiraSubtask]):

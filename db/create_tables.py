@@ -30,8 +30,8 @@ def create_jira_tables(client: VectorDB):
         logging.error("SQL query key not found: %s", e)
     except ConnectionError as e:
         logging.error("Database connection error: %s", e)
-    except Exception as e:
-        logging.error("Unexpected error while creating Jira tables: %s", e)
+    except RuntimeError as e:
+        logging.error("Runtime error while creating Jira tables: %s", e)
 
 def drop_jira_tables(client: VectorDB):
     """
@@ -51,5 +51,5 @@ def drop_jira_tables(client: VectorDB):
         logging.error("SQL query key not found: %s", e)
     except ConnectionError as e:
         logging.error("Database connection error: %s", e)
-    except Exception as e:
-        logging.error("Unexpected error while dropping Jira tables: %s", e)
+    except RuntimeError as e:
+        logging.error("Runtime error while dropping Jira tables: %s", e)

@@ -19,17 +19,30 @@ Date: 2025-03-28
 
 import logging
 import os
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
-from dataclasses import dataclass
 import psycopg2
 from openai import AzureOpenAI
 from pgvector.psycopg2 import register_vector
 
 from db.query_store import QueryStore
 
+
 @dataclass
 class DBConfig:
+    """
+    Configuration class for the database connection.
+    Attributes:
+        dbname (str): The name of the database.
+        user (str): The username for the database connection.
+        password (str): The password for the database connection.
+        host (str): The host address of the database.
+        port (int): The port number for the database connection (optional).
+        embedding_model (object): The embedding model to use (optional).
+        vector_dim (int): The dimension of the vector embeddings (default is 3072).
+    """
+
     dbname: str
     user: str
     password: str
@@ -37,6 +50,7 @@ class DBConfig:
     port: int = None
     embedding_model: object = None
     vector_dim: int = 3072
+
 
 class VectorDB:
     """
@@ -67,15 +81,14 @@ class VectorDB:
             raise ValueError(
                 "The OpenAI API key for embedding model is not set in the environment variables."
             )
-        
-        self.baseUrl = "https://oai-hackathon-ofa.openai.azure.com/"
+        self.base_url = "https://oai-hackathon-ofa.openai.azure.com/"
         self.instance_name = "oai-hackathon-ofa"
         self.api_version = "2024-02-01"
 
         if config.embedding_model is None:
             self.embedding_model = AzureOpenAI(
                 api_version=self.api_version,
-                azure_endpoint=self.baseUrl,
+                azure_endpoint=self.base_url,
                 api_key=self.embedding_api_key,
             )
         else:
@@ -95,7 +108,7 @@ class VectorDB:
         3. Connects to the vector database.
         4. Creates the required extension and table in the vector database.
         Raises:
-            Exception: If any error occurs during the setup process, 
+            Exception: If any error occurs during the setup process,
                 it logs the error and raises the exception.
         """
         try:
@@ -111,7 +124,15 @@ class VectorDB:
             raise
 
     def create_embedding(self, text: str):
-        # Embedding
+        """
+        Creates an embedding for the given text using the specified embedding model.
+        Args:
+            text (str): The text to be embedded.
+        Returns:
+            list: The embedding vector for the text.
+        Raises:
+            ValueError: If the text is empty or None.
+        """
         embedding = self.embedding_model.embeddings.create(
             model="text-embedding-3-large",
             input=[
@@ -136,20 +157,25 @@ class VectorDB:
         try:
             if self.port:
                 self.conn = psycopg2.connect(
-                    dbname="postgres", user=self.user, password=self.password,
-                    host=self.host, port=self.port
+                    dbname="postgres",
+                    user=self.user,
+                    password=self.password,
+                    host=self.host,
+                    port=self.port,
                 )
             else:
                 self.conn = psycopg2.connect(
                     dbname=self.dbname,
                     user=self.user,
                     password=self.password,
-                    host=self.host
+                    host=self.host,
                 )
                 self.conn.autocommit = True
                 self.cursor = self.conn.cursor()
                 # self.is_connected = True
-                logging.info("Connection to the 'postgres' database successfully established.")
+                logging.info(
+                    "Connection to the 'postgres' database successfully established."
+                )
         except psycopg2.OperationalError as e:
             logging.error("OperationalError: Unable to connect to 'postgres': %s", e)
             raise
@@ -159,8 +185,6 @@ class VectorDB:
         except psycopg2.DatabaseError as e:
             logging.error("DatabaseError: General database error occurred: %s", e)
             raise
-
-
 
     def _create_extension_and_table(self):
         """
@@ -189,6 +213,14 @@ class VectorDB:
             raise
 
     def store_text(self, statement_name, **columns):
+        """
+        Stores the text in the database using the provided SQL statement name and parameters.
+        Args:
+            statement_name (str): The name of the SQL statement to execute.
+            **columns: The parameters to be passed to the SQL statement.
+        Raises:
+            psycopg2.Error: If an error occurs while executing the SQL statement.
+                """
         # if not self.is_connected:
         #     raise RuntimeError("Database connection is not established. Call setup() first.")
         sql_statement = QueryStore.get_sql(statement_name, **columns)
@@ -209,7 +241,6 @@ class VectorDB:
             self.conn.rollback()
             raise
 
-
     def get_matches(self, query, query_statement_name, limit=3):
         """
         Finds the most similar texts to the given query based on their embeddings.
@@ -229,9 +260,7 @@ class VectorDB:
         logging.debug("SQL statement: %s", sql_statement)
 
         try:
-            self.cursor.execute(
-            sql_statement
-            )
+            self.cursor.execute(sql_statement)
             results = self.cursor.fetchall()
             return results
         except psycopg2.ProgrammingError as e:
@@ -243,7 +272,6 @@ class VectorDB:
         except psycopg2.DatabaseError as e:
             logging.error("DatabaseError while retrieving matches: %s", e)
             raise
-
 
     def close(self):
         """
@@ -260,9 +288,8 @@ class VectorDB:
             logging.error("InterfaceError while closing resources: %s", e)
         except psycopg2.DatabaseError as e:
             logging.error("DatabaseError while closing resources: %s", e)
-        except Exception as e:
-            logging.error("Unexpected error while closing resources: %s", e)
-
+        except (psycopg2.Error, RuntimeError) as e:
+            logging.error("Error while closing resources: %s", e)
 
     def describe_database(self):
         """
@@ -285,22 +312,24 @@ class VectorDB:
         try:
             self.cursor.execute(
                 "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
-                )
+            )
             tables = [table[0] for table in self.cursor.fetchall()]
             self.cursor.execute("SELECT extname FROM pg_extension")
             extensions = [extension[0] for extension in self.cursor.fetchall()]
 
             table_details = []
             for table in tables:
-                self.cursor.execute(f"""
+                self.cursor.execute(
+                    f"""
                 SELECT column_name, data_type
                 FROM information_schema.columns
                 WHERE table_name = '{table}'
-                """)
+                """
+                )
                 columns = self.cursor.fetchall()
                 table_details.append({"table_name": table, "columns": columns})
             return {"tables": table_details, "extensions": extensions}
-            
+
         except psycopg2.ProgrammingError as e:
             logging.error("ProgrammingError while describing the database: %s", e)
             self.conn.rollback()
@@ -311,6 +340,7 @@ class VectorDB:
         except psycopg2.DatabaseError as e:
             logging.error("DatabaseError while describing the database: %s", e)
             raise
+
     def execute_sql(self, sql_statement, **sql_params):
         """
         Executes a given SQL statement.
@@ -323,7 +353,7 @@ class VectorDB:
         if " " not in sql_statement.strip():
             logging.warning(
                 "SQL statement appears to be a key. Attempting to retrieve from QueryStore."
-                )
+            )
             sql_statement = QueryStore.get_sql(sql_statement, **sql_params)
         try:
             self.cursor.execute(sql_statement)
@@ -347,8 +377,8 @@ class VectorDB:
             self.conn.rollback()
             raise
 
-    
-def format_output(string:str) -> str:
+
+def format_output(string: str) -> str:
     """
     Formats the output string by replacing escape sequences with actual characters.
     Returns the formatted string.
@@ -357,6 +387,7 @@ def format_output(string:str) -> str:
     formatted_res = formatted_res.replace("\\r\\r", "\n")
     return formatted_res.replace("\\n", "\n")
 
+
 if __name__ == "__main__":
     PG_PWD = os.getenv("PG_PWD")
     client = VectorDB(
@@ -364,7 +395,7 @@ if __name__ == "__main__":
             dbname="hackathon_ofa",
             user="hackathon_ofa",
             password=PG_PWD,
-            host="hackathon-ofa.postgres.database.azure.com"
+            host="hackathon-ofa.postgres.database.azure.com",
         )
     )
 
