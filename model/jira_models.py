@@ -248,3 +248,87 @@ class JiraEpic(JiraBaseIssue):
     
     Currently, it has no additional fields but allows semantic distinction.
     """
+
+
+
+class Author(BaseModel):
+    """
+    Represents the author of a Jira attachment.
+
+    Attributes:
+        self (HttpUrl): The URL to the author's profile.
+        accountId (str): The account ID of the author.
+        displayName (str): The display name of the author.
+    """
+    accountId: str
+    displayName: str
+
+    def to_string(self) -> str:
+        """
+        Returns a string representation of the author.
+
+        Returns:
+            str: The string representation of the author.
+        """
+        return f"{self.displayName} ({self.accountId})"
+
+
+class JiraAttachement(BaseModel):
+    """
+    Represents a Jira attachment.
+
+    Attributes:
+        self (HttpUrl): The URL to the attachment.
+        id (str): The unique ID of the attachment.
+        filename (str): The name of the file.
+        author (Author): The author of the attachment.
+        created (datetime): The creation timestamp of the attachment.
+        size (int): The size of the attachment in bytes.
+        mimeType (str): The MIME type of the attachment.
+        content (HttpUrl): The URL to the content of the attachment.
+    """
+    id: str
+    filename: str
+    author: Author
+    created: datetime
+    size: int
+    mimeType: str
+    content: HttpUrl
+
+    def to_string(self, detailed: bool = False) -> str:
+        """
+        Generates a string representation of the attachment.
+
+        Args:
+            detailed (bool): Whether to include detailed information.
+
+        Returns:
+            str: The string representation of the attachment.
+        """
+        base = f"{self.filename} ({self.size} bytes)"
+        if not detailed:
+            return base
+        details = [
+            f"Author:   {self.author.to_string()}",
+            f"Created:  {self.created}",
+            f"Type:     {self.mimeType}",
+            f"Content:  {self.content}",
+        ]
+        return base + "\n" + indent("\n".join(details), prefix="  ")
+
+    def __str__(self):
+        return self.to_string(detailed=False)
+
+    def get_content(self, jira_client) -> str:
+        """
+        Fetches the content of the attachment.
+        """
+        key = str(self.content).split("/")[-1]
+        content = jira_client.attachment(key)
+        attachement_bytes = []
+
+        for chunk in content.iter_content(chunk_size=8192):
+            attachement_bytes.append(chunk)
+
+        content_bytes = b"".join(attachement_bytes)
+        return content_bytes
