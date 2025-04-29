@@ -6,7 +6,7 @@ for generating string representations.
 
 from datetime import datetime
 from textwrap import indent
-from typing import Optional, List
+from typing import Optional, List, Any
 from pydantic import BaseModel, HttpUrl, Field
 
 
@@ -182,3 +182,69 @@ class JiraStory(JiraBaseIssue):
             )
             return base + "\n  Subtasks:\n" + indent(subs, "    ")
         return base
+
+class JiraTask(JiraBaseIssue):
+    """
+    Represents a Jira task, which is a specialized type of issue.
+
+    Attributes:
+        subtasks (List[JiraSubtask]): A list of subtasks associated with the task.
+    """
+
+    subtasks: List[JiraSubtask] = Field(default_factory=list)
+    parent_key: Optional[str] = None
+    parent_description: Optional[str] = None
+
+    def to_string(self, detailed: bool = False) -> str:
+        """
+        Generates a string representation of the task.
+
+        Args:
+            detailed (bool): Whether to include detailed information.
+
+        Returns:
+            str: The string representation of the task.
+        """
+        base = super().to_string(detailed)
+        if detailed and self.subtasks:
+            subs = "\n".join(
+                f"  - {s.to_string(detailed=False)}" for s in self.subtasks
+            )
+            return base + "\n  Subtasks:\n" + indent(subs, "    ")
+        return base
+
+class JiraBug(JiraBaseIssue):
+    """
+    Represents a Jira bug, which is a specialized type of issue.
+
+    Attributes:
+        subtasks (List[JiraSubtask]): A list of subtasks associated with the bug.
+    """
+
+    fixed: List[Any] = Field(default_factory=list)
+
+    def to_string(self, detailed: bool = False) -> str:
+        """
+        Generates a string representation of the bug.
+
+        Args:
+            detailed (bool): Whether to include detailed information.
+
+        Returns:
+            str: The string representation of the bug.
+        """
+        base = super().to_string(detailed)
+        if detailed and self.subtasks:
+            subs = "\n".join(
+                f"  - {s.to_string(detailed=False)}" for s in self.subtasks
+            )
+            return base + "\n  Subtasks:\n" + indent(subs, "    ")
+        return base
+
+
+class JiraEpic(JiraBaseIssue):
+    """
+    Represents a Jira epic, which is a specialized type of issue.
+    
+    Currently, it has no additional fields but allows semantic distinction.
+    """

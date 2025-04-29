@@ -27,22 +27,31 @@ client = VectorDB(
 
 res = client.execute_sql(
     """
-    SELECT COUNT(*) FROM jira_issue;
+    SELECT key, status_category, assignee FROM jira_issue;
     """
 )
 
 if res is None:
     print("Table does not exist. Creating table...")
 else:
-    print(f"Found {res[0][0]} records in the table.")
+    print(f"Found {len(res)} records in the 'jira_issue' table.")
+    sorted_keys = sorted(res, key=lambda x: x[1])
+    for key in sorted_keys:
+        print(f"{key[0]} is assigned to {key[2]} with status category {key[1]}")
 
-res_subtask = client.execute_sql(
+
+print()
+
+
+res_subtask_keys = client.execute_sql(
     """
-    SELECT COUNT(*) FROM jira_subtask;
+    SELECT key, parent_key, assignee FROM jira_subtask;
     """
 )
-
-if res_subtask is None:
+if res_subtask_keys is None:
     print("Table 'jira_subtask' does not exist.")
 else:
-    print(f"Found {res_subtask[0][0]} records in the 'jira_subtask' table.")
+    print(f"Found {len(res_subtask_keys)} records in the 'jira_subtask' table.")
+    sorted_subtask_keys = sorted(res_subtask_keys, key=lambda x: x[2])
+    for key in sorted_subtask_keys:
+        print(f"{key[0]} is a subtask of {key[1]} assigned to {key[2]}")

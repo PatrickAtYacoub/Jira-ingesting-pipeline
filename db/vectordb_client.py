@@ -17,7 +17,6 @@ Author: Patrick Scheich
 Date: 2025-03-28
 """
 
-import logging
 import os
 from dataclasses import dataclass
 
@@ -27,6 +26,8 @@ from openai import AzureOpenAI
 from pgvector.psycopg2 import register_vector
 
 from db.query_store import QueryStore
+
+from logger import logger
 
 
 @dataclass
@@ -114,13 +115,13 @@ class VectorDB:
         try:
             self._connect_to_postgres()
         except psycopg2.OperationalError as e:
-            logging.error("Operational error during PostgreSQL connection: %s", e)
+            logger.error("Operational error during PostgreSQL connection: %s", e)
             raise
 
         try:
             self._create_extension_and_table()
         except psycopg2.Error as e:
-            logging.error("Error creating extension or table: %s", e)
+            logger.error("Error creating extension or table: %s", e)
             raise
 
     def create_embedding(self, text: str):
@@ -173,17 +174,17 @@ class VectorDB:
                 self.conn.autocommit = True
                 self.cursor = self.conn.cursor()
                 # self.is_connected = True
-                logging.info(
+                logger.info(
                     "Connection to the 'postgres' database successfully established."
                 )
         except psycopg2.OperationalError as e:
-            logging.error("OperationalError: Unable to connect to 'postgres': %s", e)
+            logger.error("OperationalError: Unable to connect to 'postgres': %s", e)
             raise
         except psycopg2.InterfaceError as e:
-            logging.error("InterfaceError: Issue with the database interface: %s", e)
+            logger.error("InterfaceError: Issue with the database interface: %s", e)
             raise
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError: General database error occurred: %s", e)
+            logger.error("DatabaseError: General database error occurred: %s", e)
             raise
 
     def _create_extension_and_table(self):
@@ -198,17 +199,17 @@ class VectorDB:
         try:
             self.cursor.execute("CREATE EXTENSION IF NOT EXISTS vector;")
             self.conn.commit()
-            logging.info("Extension has been created or already exists.")
+            logger.info("Extension has been created or already exists.")
         except psycopg2.ProgrammingError as e:
-            logging.error("ProgrammingError while creating extension: %s", e)
+            logger.error("ProgrammingError while creating extension: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.IntegrityError as e:
-            logging.error("IntegrityError while creating extension: %s", e)
+            logger.error("IntegrityError while creating extension: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError while creating extension: %s", e)
+            logger.error("DatabaseError while creating extension: %s", e)
             self.conn.rollback()
             raise
 
@@ -227,17 +228,17 @@ class VectorDB:
         try:
             self.cursor.execute(sql_statement)
             self.conn.commit()
-            logging.info("Text stored successfully.")
+            logger.info("Text stored successfully.")
         except psycopg2.ProgrammingError as e:
-            logging.error("ProgrammingError while storing text: %s", e)
+            logger.error("ProgrammingError while storing text: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.IntegrityError as e:
-            logging.error("IntegrityError while storing text: %s", e)
+            logger.error("IntegrityError while storing text: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError while storing text: %s", e)
+            logger.error("DatabaseError while storing text: %s", e)
             self.conn.rollback()
             raise
 
@@ -257,20 +258,20 @@ class VectorDB:
         sql_statement = QueryStore.get_sql(
             query_statement_name, vector=query_embedding, limit=limit
         )
-        logging.debug("SQL statement: %s", sql_statement)
+        logger.debug("SQL statement: %s", sql_statement)
 
         try:
             self.cursor.execute(sql_statement)
             results = self.cursor.fetchall()
             return results
         except psycopg2.ProgrammingError as e:
-            logging.error("ProgrammingError while retrieving matches: %s", e)
+            logger.error("ProgrammingError while retrieving matches: %s", e)
             raise
         except psycopg2.IntegrityError as e:
-            logging.error("IntegrityError while retrieving matches: %s", e)
+            logger.error("IntegrityError while retrieving matches: %s", e)
             raise
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError while retrieving matches: %s", e)
+            logger.error("DatabaseError while retrieving matches: %s", e)
             raise
 
     def close(self):
@@ -283,13 +284,13 @@ class VectorDB:
             if self.conn:
                 self.conn.close()
             # self.is_connected = False
-            logging.info("Database connection closed.")
+            logger.info("Database connection closed.")
         except psycopg2.InterfaceError as e:
-            logging.error("InterfaceError while closing resources: %s", e)
+            logger.error("InterfaceError while closing resources: %s", e)
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError while closing resources: %s", e)
+            logger.error("DatabaseError while closing resources: %s", e)
         except (psycopg2.Error, RuntimeError) as e:
-            logging.error("Error while closing resources: %s", e)
+            logger.error("Error while closing resources: %s", e)
 
     def describe_database(self):
         """
@@ -331,14 +332,14 @@ class VectorDB:
             return {"tables": table_details, "extensions": extensions}
 
         except psycopg2.ProgrammingError as e:
-            logging.error("ProgrammingError while describing the database: %s", e)
+            logger.error("ProgrammingError while describing the database: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.InterfaceError as e:
-            logging.error("InterfaceError while describing the database: %s", e)
+            logger.error("InterfaceError while describing the database: %s", e)
             raise
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError while describing the database: %s", e)
+            logger.error("DatabaseError while describing the database: %s", e)
             raise
 
     def execute_sql(self, sql_statement, **sql_params):
@@ -351,7 +352,7 @@ class VectorDB:
         """
 
         if " " not in sql_statement.strip():
-            logging.warning(
+            logger.debug(
                 "SQL statement appears to be a key. Attempting to retrieve from QueryStore."
             )
             sql_statement = QueryStore.get_sql(sql_statement, **sql_params)
@@ -359,21 +360,21 @@ class VectorDB:
             self.cursor.execute(sql_statement)
             if sql_statement.strip().lower().startswith("select"):
                 result = self.cursor.fetchall()
-                logging.info("SQL SELECT statement executed successfully.")
+                logger.info("SQL SELECT statement executed successfully.")
                 return result
             self.conn.commit()
-            logging.info("SQL statement executed successfully.")
+            logger.info("SQL statement executed successfully.")
             return None
         except psycopg2.ProgrammingError as e:
-            logging.error("ProgrammingError while executing SQL statement: %s", e)
+            logger.error("ProgrammingError while executing SQL statement: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.IntegrityError as e:
-            logging.error("IntegrityError while executing SQL statement: %s", e)
+            logger.error("IntegrityError while executing SQL statement: %s", e)
             self.conn.rollback()
             raise
         except psycopg2.DatabaseError as e:
-            logging.error("DatabaseError while executing SQL statement: %s", e)
+            logger.error("DatabaseError while executing SQL statement: %s", e)
             self.conn.rollback()
             raise
 

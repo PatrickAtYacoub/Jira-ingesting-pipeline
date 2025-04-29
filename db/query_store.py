@@ -58,7 +58,7 @@ class QueryStore:
         CREATE TABLE jira_subtask (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             key TEXT NOT NULL,
-            parent_key TEXT REFERENCES jira_issue(key),
+            parent_key TEXT,
             summary TEXT NOT NULL,
             summary_vector VECTOR(1024),
             status TEXT,
@@ -70,12 +70,58 @@ class QueryStore:
             url TEXT
         );
         """,
+        "create_jira_task_table": """
+        CREATE TABLE jira_task (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            key TEXT NOT NULL,
+            parent_key TEXT,
+            summary TEXT NOT NULL,
+            summary_vector VECTOR(1024),
+            description TEXT,
+            description_vector VECTOR(1024),
+            issue_type TEXT,
+            status TEXT,
+            status_category TEXT,
+            project TEXT,
+            assignee TEXT,
+            reporter TEXT,
+            created TIMESTAMP,
+            updated TIMESTAMP,
+            time_spent_seconds INT,
+            url TEXT
+        );
+        """,
+        "create_jira_bug_table": """
+        CREATE TABLE jira_bug (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            key TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            summary_vector VECTOR(1024),
+            description TEXT,
+            description_vector VECTOR(1024),
+            issue_type TEXT,
+            status TEXT,
+            status_category TEXT,
+            project TEXT,
+            assignee TEXT,
+            reporter TEXT,
+            created TIMESTAMP,
+            updated TIMESTAMP,
+            time_spent_seconds INT,
+            url TEXT
+        );""",
         # ===== TABLE DELETION ================================
         "delete_jira_issue": """
         DELETE FROM jira_issue WHERE key = '{key}';
         """,
         "delete_jira_subtask": """
         DELETE FROM jira_subtask WHERE key = '{key}';
+        """,
+        "delete_jira_task": """
+        DELETE FROM jira_task WHERE key = '{key}';
+        """,
+        "delete_jira_bug": """
+        DELETE FROM jira_bug WHERE key = '{key}';
         """,
         # ===== TABLE DROP ===============================
         "drop_jira_issue_table": """
@@ -84,7 +130,13 @@ class QueryStore:
         "drop_jira_subtask_table": """
         DROP TABLE IF EXISTS jira_subtask;
         """,
-        # ===== INDEX CREATION ==================================
+        "drop_jira_task_table": """
+        DROP TABLE IF EXISTS jira_task;
+        """,
+        "drop_jira_bug_table": """
+        DROP TABLE IF EXISTS jira_bug;
+        """,
+        # ===== INSERTION ==================================
         "insert_jira_issue": """
         INSERT INTO jira_issue (key, summary, summary_vector, description, description_vector, issue_type, status, 
         status_category, project, assignee, reporter, created, updated, time_spent_seconds, url)
@@ -97,9 +149,29 @@ class QueryStore:
         created, updated, time_spent_seconds, url)
         VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{status}', '{status_category}', 
         '{assignee}', '{created}', '{updated}', {time_spent_seconds}, '{url}');
+        ""","insert_jira_task": """
+        INSERT INTO jira_task (key, parent_key, summary, summary_vector, description, description_vector, issue_type,
+        status, status_category, project, assignee, reporter, created, updated, time_spent_seconds, url)
+        VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{description}', '{description_vector}', 
+        '{issue_type}', '{status}', '{status_category}', '{project}', '{assignee}', '{reporter}', '{created}', 
+        '{updated}', {time_spent_seconds}, '{url}');
         """,
+        "insert_jira_bug": """
+        INSERT INTO jira_bug (key, summary, summary_vector, description, description_vector, issue_type,
+        status, status_category, project, assignee, reporter, created, updated, time_spent_seconds, url)
+        VALUES ('{key}', '{summary}', '{summary_vector}', '{description}', '{description_vector}', '{issue_type}', 
+        '{status}', '{status_category}', '{project}', '{assignee}', '{reporter}', '{created}', '{updated}', 
+        {time_spent_seconds}, '{url}');
+        """,
+        # ===== INDEX CREATION ==================================
         "issue_exists": """
-        SELECT EXISTS(SELECT 1 FROM jira_issue WHERE key = '{key}');
+        SELECT EXISTS(
+            SELECT 1 FROM jira_issue WHERE key = '{key}'
+            UNION ALL
+            SELECT 1 FROM jira_bug WHERE key = '{key}'
+            UNION ALL
+            SELECT 1 FROM jira_task WHERE key = '{key}'
+        );
         """,
     }
 
@@ -113,4 +185,4 @@ class QueryStore:
         """
         if query_name in QueryStore.SQL_TEMPLATES:
             return QueryStore.SQL_TEMPLATES[query_name].format(**params)
-        raise ValueError(f"Query '{query_name}' not found in PromptStore.")
+        raise ValueError(f"Query '{query_name}' not found in QueryStore.")
