@@ -1,13 +1,10 @@
 """
-This module contains functions to create and drop tables in the database.
-It uses the `VectorDB` class to execute SQL commands for creating and dropping tables related to Jira issues and subtasks.
-It also includes logging to track the success or failure of these operations.
+This module contains parameterized tools to query JIRA data from the database.
+Each tool is responsible for querying a specific column from a defined table using safe SQL construction.
 """
 
 import sys
-import os
-from dataclasses import dataclass
-import dotenv
+from config import Config
 from langgraph.store.memory import InMemoryStore
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.prebuilt import create_react_agent
@@ -19,109 +16,249 @@ from logger import agent_logger as logger
 checkpointer = InMemorySaver()
 store = InMemoryStore()
 
-@dataclass(frozen=True)
-class Config:
-    """
-    Configuration class to hold environment variables and database credentials.
-    """
-    jira_url: str
-    jira_email: str
-    jira_token: str
-    pg_password: str
-    pg_dbname: str = "hackathon_ofa"
-    pg_user: str = "hackathon_ofa"
-    pg_host: str = "hackathon-ofa.postgres.database.azure.com"
-    azure_chat_openai_api_version: str = "2024-02-01"
-    azure_chat_openai_base_url: str = "https://oai-hackathon-ofa.openai.azure.com/"
-    azure_chat_openai_instanceName = "oai-hackathon-ofa"
-
-    @staticmethod
-    def load_from_env() -> "Config":
-        """
-        Load configuration from environment variables.
-        Raises an error if required variables are missing.
-        """
-        dotenv.load_dotenv()
-
-        jira_email = os.getenv("EMAIL")
-        jira_token = os.getenv("JIRA_AT")
-        pg_password = os.getenv("PG_PWD")
-
-        missing = [name for name, val in {
-            "EMAIL": jira_email,
-            "JIRA_AT": jira_token,
-            "PG_PWD": pg_password
-        }.items() if not val]
-
-        if missing:
-            raise EnvironmentError(
-                f"The following environment variables are not set: {', '.join(missing)}"
-            )
-
-        return Config(
-            jira_url="https://me-easy.atlassian.net",
-            jira_email=jira_email,
-            jira_token=jira_token,
-            pg_password=pg_password
-        )
-
 config = Config.load_from_env()
 
 model = AzureChatOpenAI(
     azure_deployment="gpt-4o-mini",
-    azure_endpoint=config.azure_chat_openai_base_url,
-    azure_api_version=config.azure_chat_openai_api_version,
-    model_name="gpt-4o-mini", )
+    azure_endpoint=config.openai_base_url,
+    api_version=config.openai_api_version,
+    model_name="gpt-4o-mini"
+)
 
 db_client = VectorDB(
-        DBConfig(
-            dbname=config.pg_dbname,
-            user=config.pg_user,
-            password=config.pg_password,
-            host=config.pg_host
-        )
+    DBConfig(
+        dbname=config.pg_dbname,
+        user=config.pg_user,
+        password=config.pg_password,
+        host=config.pg_host
     )
+)
+
+# --- Parameterized Tools ---
+
+def get_tasks_by_assignee(assignee: str):
+    """
+    Retrieves tasks assigned to a specific assignee from the 'jira_task' table,
+    excluding vector fields.
+
+    Args:
+        assignee (str): The username or identifier of the assignee.
+
+    Returns:
+        list: A list of task dictionaries with fields: key, parent_key, summary, 
+              description, issue_type, status, status_category, project, assignee, 
+              reporter, created, updated, time_spent_seconds, and url.
+    """
+    sql = f"""
+    SELECT key, parent_key, summary, description, issue_type, status, 
+           status_category, project, assignee, reporter, created, updated, 
+           time_spent_seconds, url 
+    FROM jira_task 
+    WHERE assignee = '{assignee}'
+    """
+    return get_issues_from_db(sql)
 
 
-def get_issues_from_db():
+def get_tasks_by_project(project: str):
+    """
+    Retrieves tasks for a given project from the 'jira_task' table,
+    excluding vector fields.
+
+    Args:
+        project (str): The project name or identifier.
+
+    Returns:
+        list: A list of task dictionaries with the same field key, parent_key, summary, 
+              description, issue_type, status, status_category, project, assignee, 
+              reporter, created, updated, time_spent_seconds, and url.
+    """
+    sql = f"""
+    SELECT key, parent_key, summary, description, issue_type, status, 
+           status_category, project, assignee, reporter, created, updated, 
+           time_spent_seconds, url 
+    FROM jira_task 
+    WHERE project = '{project}'
+    """
+    return get_issues_from_db(sql)
+
+
+def get_bugs_by_status(status: str):
+    """
+    Retrieves bugs from the 'jira_bug' table filtered by status,
+    excluding vector fields.
+
+    Args:
+        status (str): The bug status to filter by (e.g., "Open", "Closed").
+
+    Returns:
+        list: A list of bug dictionaries with fields: key, summary, description, 
+              issue_type, status, status_category, project, assignee, reporter, 
+              created, updated, time_spent_seconds, and url.
+    """
+    sql = f"""
+    SELECT key, summary, description, issue_type, status, 
+           status_category, project, assignee, reporter, created, 
+           updated, time_spent_seconds, url 
+    FROM jira_bug 
+    WHERE status = '{status}'
+    """
+    return get_issues_from_db(sql)
+
+
+def get_subtasks_by_parent_key(parent_key: str):
+    """
+    Retrieves subtasks for a specific parent issue from the 'jira_subtask' table,
+    excluding vector fields.
+
+    Args:
+        parent_key (str): The key of the parent issue.
+
+    Returns:
+        list: A list of subtask dictionaries with fields: key, parent_key, summary, 
+              status, status_category, assignee, created, updated, 
+              time_spent_seconds, and url.
+    """
+    sql = f"""
+    SELECT key, parent_key, summary, status, 
+           status_category, assignee, created, updated, 
+           time_spent_seconds, url 
+    FROM jira_subtask 
+    WHERE parent_key = '{parent_key}'
+    """
+    return get_issues_from_db(sql)
+
+
+def get_tasks_by_description_similarity(text: str):
+    """
+    Retrieves the top 5 tasks with the most similar descriptions (vector-based match),
+    but returns all metadata fields excluding vectors.
+
+    Args:
+        text (str): Input text to compare against description vectors.
+
+    Returns:
+        list: Top 5 most similar task with the following fields: key, parent_key, summary,
+              description, issue_type, status, status_category, project, assignee, 
+              reporter, created, updated, time_spent_seconds, and url.
+    """
+    res = []
+    embedding = db_client.create_embedding(text)
+    sql = f"""
+    SELECT key, parent_key, summary, description, issue_type, status, 
+           status_category, project, assignee, reporter, created, 
+           updated, time_spent_seconds, url, 
+           description_vector <=> '{embedding}' AS similarity
+    FROM jira_task
+    ORDER BY similarity DESC
+    LIMIT 5
+    """
+    res.append(get_issues_from_db(sql))
+    sql = f"""
+    SELECT key, parent_key, summary, description, status, 
+           status_category, assignee, created, 
+           updated, time_spent_seconds, url, 
+           description_vector <=> '{embedding}' AS similarity
+    FROM jira_subtask
+    ORDER BY similarity DESC
+    LIMIT 5
+    """
+    res.append(get_issues_from_db(sql))
+
+    sql = f"""
+    SELECT key, parent_key, summary, description, issue_type, status,
+              status_category, project, assignee, reporter, created, 
+              updated, time_spent_seconds, url, 
+              description_vector <=> '{embedding}' AS similarity
+    FROM jira_bug
+    ORDER BY similarity DESC
+    LIMIT 5
+    """
+    res.append(get_issues_from_db(sql))
+
+    return res
+
+
+def get_tasks_and_subtasks_by_summary_similarity(text: str):
+    """
+    Retrieves the top 5 tasks and subtasks with the most similar summaries (vector-based match),
+    but returns all metadata fields excluding vectors.
+
+    Args:
+        text (str): Input text to compare against summary vectors.
+
+    Returns:
+        list: Top 5 most similar tasks with the following fields: key, parent_key, summary,
+              description, issue_type, status, status_category, project, assignee, 
+              reporter, created, updated, time_spent_seconds, and url.
+              """
+    sql = f"""
+    SELECT key, parent_key, summary, description, issue_type, status, 
+           status_category, project, assignee, reporter, created, 
+           updated, time_spent_seconds, url 
+    FROM (
+        SELECT * FROM jira_task
+        UNION ALL
+        SELECT * FROM jira_subtask
+    ) AS combined_tasks
+    ORDER BY summary_vector <=> '{text}'
+    LIMIT 5
+    """
+    return get_issues_from_db(sql)
+
+
+# --- Generic execution helper ---
+
+def get_issues_from_db(sql_statement: str) -> list:
     """
     Fetches issues from the database and returns them as a list of dictionaries.
     """
-    res = db_client.execute_sql(
-        """
-        SELECT key, status_category, assignee FROM jira_issue;
-        """
-    )
-    if res is None:
-        logger.error("Table does not exist.")
-        return []
-    else:
-        logger.info("Found %d records in the 'jira_issue' table.", len(res))
-        return [{"key": key[0], "status_category": key[1], "assignee": key[2]} for key in res]
+    ALLOWED_TABLES = {"jira_task", "jira_subtask", "jira_bug"}
 
+    if not any(f"FROM {table}" in sql_statement for table in ALLOWED_TABLES):
+        logger.error("Invalid SQL statement. Only 'jira_task', 'jira_subtask', and 'jira_bug' tables are allowed.")
+        return ["Invalid SQL statement."]
+
+    res = db_client.execute_sql(sql_statement)
+    if res is None:
+        logger.error("Query returned no results or failed.")
+        return []
+    logger.info("Query returned %d records.", len(res))
+    return res
+
+# --- LangGraph Agent Setup ---
 
 service_agent = create_react_agent(
     model=model,
-    tools=[get_issues_from_db],
-    name="service_expert",
-    prompt="""You are a JIRA expert.
-    You can also help users with your tools."""
+    tools=[
+        get_tasks_by_assignee,
+        get_tasks_by_project,
+        get_bugs_by_status,
+        get_subtasks_by_parent_key,
+        get_tasks_by_description_similarity,
+        get_tasks_and_subtasks_by_summary_similarity
+    ],
+    name="jira_query_agent",
+    prompt="""You are a JIRA expert. 
+    You can help users query the JIRA database using tools that accept single parameters like assignee, project, or status.
+    Use the tools to answer the user's question with relevant data."""
 )
 
-# Create supervisor workflow
 workflow = create_supervisor(
     [service_agent],
     model=model,
     prompt=(
-        "You are a JIRA expert. "
-        "You can ask the user for more information if needed."
-        "You have access to the following tools: "
-        "- get_issues_from_db: Get issues from the database. "
+        "You are a JIRA expert. You can help the user by using the following tools:\n"
+        "- get_tasks_by_assignee(assignee: str)\n"
+        "- get_tasks_by_project(project: str)\n"
+        "- get_bugs_by_status(status: str)\n"
+        "- get_subtasks_by_parent_key(parent_key: str)\n"
+        "- get_tasks_by_text_similarity(text: str)\n"
+        "All tools query one of the following tables: jira_task, jira_subtask, or jira_bug.\n"
+        "Use them to retrieve information like key, status_category, and assignee."
     ),
     output_mode="full_history"
 )
 
-# Compile and run
 app = workflow.compile(
     checkpointer=checkpointer,
     store=store
@@ -134,21 +271,18 @@ def main():
     Main function to run the agent and process user input.
     """
     if len(sys.argv) > 1:
-        # Get the user input
         query = sys.argv[1]
     else:
-        # Default query
-        query = "Which tasks are currently assigned to Patrick Scheich"
+        query = "Which tasks are related to expoloring the Agent Use Cases"
 
     result = app.invoke({
-    "messages": [
-        {
-            "role": "user",
-            # "content": "With which IT Systems do we have most problems?"
-            "content": query
-        }
-    ]
-}, config=config)
+        "messages": [
+            {
+                "role": "user",
+                "content": query
+            }
+        ]
+    }, config=config)
 
     for m in result["messages"]:
         m.pretty_print()
