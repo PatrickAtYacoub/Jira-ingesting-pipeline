@@ -8,7 +8,7 @@ It also includes logging to track the success or failure of these operations.
 from typing import List
 from db.vectordb_client import VectorDB
 from model.jira_models import JiraStory, JiraSubtask, JiraBug, JiraTask, JiraBaseIssue, JiraEpic
-from logger import logger
+from lib.logger import logger
 from psycopg2 import DatabaseError
 
 
@@ -37,14 +37,19 @@ class JiraIngestor:
 
         try:
             summary_embedding = self.client.create_embedding(issue.summary)
+            if not issue.description or not isinstance(issue.description, str):
+                logger.error("Invalid text input: %s for %s (%s)", issue.description, issue.key, issue.to_string())
             description_embedding = self.client.create_embedding(issue.description)
 
             if isinstance(issue, JiraSubtask):
+                logger.debug("Ingesting subtask %s with parent %s", issue.key, issue.parent_key)
                 self.client.execute_sql("insert_jira_subtask",
                     key=issue.key,
                     parent_key=issue.parent_key,
                     summary=sql_escape(issue.summary),
                     summary_vector=summary_embedding,
+                    description=sql_escape(issue.description),
+                    description_vector=description_embedding,
                     status=issue.status,
                     status_category=issue.statusCategory,
                     assignee=issue.assignee.displayName if issue.assignee else "",
@@ -117,12 +122,15 @@ class JiraIngestor:
         """
         try:
             summary_embedding = self.client.create_embedding(subtask.summary)
+            description_embedding = self.client.create_embedding(subtask.description)
 
             self.client.execute_sql("insert_jira_subtask",
                 key=subtask.key,
                 parent_key=subtask.parent_key,
                 summary=subtask.summary.replace("'", "''"),
                 summary_vector=summary_embedding,
+                description=subtask.description.replace("'", "''"),
+                description_vector=description_embedding,
                 status=subtask.status,
                 status_category=subtask.statusCategory,
                 assignee=subtask.assignee.displayName if subtask.assignee else "",

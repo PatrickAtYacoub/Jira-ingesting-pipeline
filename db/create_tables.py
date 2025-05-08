@@ -7,7 +7,7 @@ It also includes logging to track the success or failure of these operations.
 
 from db.vectordb_client import VectorDB
 from db.query_store import QueryStore
-from logger import logger
+from lib.logger import logger
 
 def create_jira_tables(client: VectorDB):
     """

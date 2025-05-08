@@ -61,6 +61,8 @@ class QueryStore:
             parent_key TEXT,
             summary TEXT NOT NULL,
             summary_vector VECTOR(1024),
+            description TEXT,
+            description_vector VECTOR(1024),
             status TEXT,
             status_category TEXT,
             assignee TEXT,
@@ -95,6 +97,7 @@ class QueryStore:
         CREATE TABLE jira_bug (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             key TEXT NOT NULL,
+            parent_key TEXT,
             summary TEXT NOT NULL,
             summary_vector VECTOR(1024),
             description TEXT,
@@ -145,9 +148,9 @@ class QueryStore:
         {time_spent_seconds}, '{url}');
         """,
         "insert_jira_subtask": """
-        INSERT INTO jira_subtask (key, parent_key, summary, summary_vector, status, status_category, assignee, 
+        INSERT INTO jira_subtask (key, parent_key, summary, summary_vector, description, description_vector, status, status_category, assignee, 
         created, updated, time_spent_seconds, url)
-        VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{status}', '{status_category}', 
+        VALUES ('{key}', '{parent_key}', '{summary}', '{summary_vector}', '{description}', '{description_vector}', '{status}', '{status_category}', 
         '{assignee}', '{created}', '{updated}', {time_spent_seconds}, '{url}');
         ""","insert_jira_task": """
         INSERT INTO jira_task (key, parent_key, summary, summary_vector, description, description_vector, issue_type,

@@ -16,7 +16,7 @@ from model.jira_models import JiraStory, JiraSubtask, JiraBug, JiraTask, JiraEpi
 from jira_tools.factory import JiraFactory
 from jira_tools.ingestor import JiraIngestor
 from db.vectordb_client import VectorDB, DBConfig
-from logger import logger
+from lib.logger import logger
 
 # ------------------------------------------------------------------------------
 # Configuration & Logging
@@ -87,6 +87,11 @@ def main():
         server=config.jira_url, basic_auth=(config.jira_email, config.jira_token)
     )
 
+    # Get Projects
+    projects = jira_client.projects() 
+    for project in projects: 
+        print(f"{project.key}: {project.name}")
+
     # Fetch and parse issues
     issues = fetch_issues(jira_client, jql="project=DATA")
     parsed_issues = [JiraFactory.create_issue(issue) for issue in issues]
@@ -123,6 +128,24 @@ def main():
         len(bugs),
         len(epics) + len(stories) + len(tasks) + len(subtasks) + len(bugs),
     )
+
+    issue_data76 = [
+        issue for issue in parsed_issues if issue.key == "DATA-76"
+    ][0]
+
+    from jira_tools.attachement_handler import AttachementHandler
+    import json
+    attachement_hdlr = AttachementHandler(jira_client)
+    print(json.dumps(attachement_hdlr.process_attachements(
+        issue_data76, save_file=True
+    )))
+    # for categorized_issues in parsed_issues:
+    #     attachement_hdlr.process_attachements(
+    #         categorized_issues, save_file=True
+    #     )
+
+    return
+
     # Initialize DB and ingest
     db_client = VectorDB(
         DBConfig(

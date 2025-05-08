@@ -11,7 +11,7 @@ from langgraph.prebuilt import create_react_agent
 from langgraph_supervisor import create_supervisor
 from langchain_openai import AzureChatOpenAI
 from db.vectordb_client import VectorDB, DBConfig
-from logger import agent_logger as logger
+from lib.logger import agent_logger as logger
 
 checkpointer = InMemorySaver()
 store = InMemoryStore()
@@ -215,7 +215,10 @@ def get_issues_from_db(sql_statement: str) -> list:
     ALLOWED_TABLES = {"jira_task", "jira_subtask", "jira_bug"}
 
     if not any(f"FROM {table}" in sql_statement for table in ALLOWED_TABLES):
-        logger.error("Invalid SQL statement. Only 'jira_task', 'jira_subtask', and 'jira_bug' tables are allowed.")
+        logger.error(
+            "Invalid SQL statement. " + 
+            "Only 'jira_task', 'jira_subtask', and 'jira_bug' tables are allowed."
+            )
         return ["Invalid SQL statement."]
 
     res = db_client.execute_sql(sql_statement)
@@ -238,7 +241,7 @@ service_agent = create_react_agent(
         get_tasks_and_subtasks_by_summary_similarity
     ],
     name="jira_query_agent",
-    prompt="""You are a JIRA expert. 
+    prompt="""You are a JIRA expert.
     You can help users query the JIRA database using tools that accept single parameters like assignee, project, or status.
     Use the tools to answer the user's question with relevant data."""
 )

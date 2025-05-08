@@ -27,7 +27,7 @@ from pgvector.psycopg2 import register_vector
 
 from db.query_store import QueryStore
 
-from logger import logger
+from lib.logger import logger
 
 
 @dataclass
@@ -77,7 +77,7 @@ class VectorDB:
         self.port = config.port
         self.vector_dim = config.vector_dim
 
-        self.embedding_api_key = os.getenv("OPENAI_EMBEDDING_MODEL_API_KEY")
+        self.embedding_api_key = os.getenv("AZURE_OPENAI_API_KEY")
         if not self.embedding_api_key:
             raise ValueError(
                 "The OpenAI API key for embedding model is not set in the environment variables."
@@ -134,6 +134,9 @@ class VectorDB:
         Raises:
             ValueError: If the text is empty or None.
         """
+        if not text or not isinstance(text, str):
+            logger.error("Invalid text input: %s", text)
+
         embedding = self.embedding_model.embeddings.create(
             model="text-embedding-3-large",
             input=[
