@@ -8,8 +8,7 @@ It also includes logging to track the success or failure of these operations.
 import os
 from dotenv import load_dotenv
 
-from db.create_tables import create_jira_tables, drop_jira_tables
-from db.vectordb_client import VectorDB, DBConfig
+from db import create_jira_tables, drop_jira_tables, VectorDB, DBConfig
 
 load_dotenv()
 

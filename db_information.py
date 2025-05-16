@@ -7,7 +7,7 @@ It also includes logging to track the success or failure of these operations.
 
 import os
 from dotenv import load_dotenv
-from db.vectordb_client import VectorDB, DBConfig
+from db import VectorDB, DBConfig
 
 load_dotenv()
 

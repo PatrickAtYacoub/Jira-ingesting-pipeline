@@ -1,4 +1,7 @@
 import string
+from copy import deepcopy
+from pydantic import BaseModel, PrivateAttr
+from typing import Dict, Any
 
 
 class PromptStore:
@@ -29,7 +32,12 @@ class PromptStore:
         "extract": {
             "role_key": "extractor",
             "template": "Extract the key information from the {object} relevant to {goal}, output it in {format} format."
+        },
+        "keyword_extraction": {
+            "role_key": "extractor",
+            "template": "From the {object}, extract a list of relevant keywords suitable for {recipient}. {context}Return the result {format} optimized for {goal}."
         }
+
     }
 
     OBJECT = {
@@ -41,13 +49,15 @@ class PromptStore:
     RECIPIENT = {
         "ai_model": "an AI model Processor for further analysis",
         "end_user": "a non-technical end user for better understanding",
-        "search_index": "a semantic search index for optimized retrieval"
+        "search_index": "a semantic search index for optimized retrieval",
+        "keyword_extractor": "exact keyword matching (e.g. 'if word in text')"
     }
 
     FORMAT = {
-        "contextual_search": "so it can be effectively indexed for contextual retrieval",
-        "structured_data": "as structured JSON for further processing",
-        "summary": "as a concise summary"
+        "contextual_search": "as a list of relevant items for contextual retrieval (do not use code blocks or markdown formatting)",
+        "structured_data": "as a list of structured data items (do not use code blocks or markdown formatting)",
+        "summary": "as a concise summary (do not use code blocks or markdown formatting)",
+        "string_list": "as a plain list of strings, separated by commas or line breaks, without any code blocks or markdown formatting"
     }
 
     PURPOSE = {
@@ -59,7 +69,14 @@ class PromptStore:
     GOAL = {
         "metadata_tagging": "metadata tagging",
         "semantic_indexing": "semantic indexing",
-        "classification": "automated classification"
+        "classification": "automated classification",
+        "exact_matching": "exact keyword matching"
+    }
+
+    CONTEXT = {
+        "none": "", # For when no additional context is needed. This is the default.
+        "relevance_explanation": "\"Relevant\" in this context means the most important topics or entities mentioned, excluding common words." ,
+        "number_limit": "Limit the number of keywords to between {min_keywords} and {max_keywords}."
     }
 
     @classmethod
@@ -82,64 +99,121 @@ class PromptStore:
     @classmethod
     def get_prompt(cls, prompt_name: str, **params) -> str:
         """
-        Builds a prompt using the template identified by `prompt_name` and formats it with given parameters.
+        Generate a prompt string based on the specified prompt name and parameters.
 
         Args:
-            prompt_name (str): The name of the task prompt to retrieve.
-            **params: Parameters to fill the prompt placeholders.
+            prompt_name (str): The name of the prompt/task to generate.
+            **params: Arbitrary keyword arguments representing dynamic parameters for the prompt.
 
         Returns:
-            str: The formatted prompt string.
+            str: The fully formatted prompt string.
 
         Raises:
-            ValueError: If required parameters are missing or placeholders can't be resolved.
+            ValueError: If the prompt or required parameters are missing.
         """
-
-        # Step 1: Get task template
         task = cls.TASK.get(prompt_name)
         if not task:
-            raise ValueError(f"Prompt '{prompt_name}' not found in TASK store.")
+            raise ValueError(f"Prompt '{prompt_name}' nicht gefunden")
 
-        # Step 2: Get role for the task
-        role_key = task.get("role_key")
-        role = cls.ROLE.get(role_key, "")  # Fallback to an empty string if the role is not found
+        role = cls.ROLE.get(task.get("role_key", ""), "")
+        template = task.get("template", "")
         
-        # Step 3: Get template
-        template = task.get("template")
         if not template:
-            raise ValueError(f"Template for task '{prompt_name}' is missing.")
-        
-        # Step 4: Extract required keys dynamically
+            raise ValueError(f"Template für '{prompt_name}' fehlt")
+
+        params.setdefault('context', 'none')
         required_keys = cls._extract_placeholders(template)
-
-        # Step 5: Validate all required keys are provided
-        missing_keys = [
-            key for key in required_keys if key not in params or not params[key]
-        ]
-        if missing_keys:
-            raise ValueError(
-                f"Missing required parameter(s): {', '.join(missing_keys)}"
-            )
-
-        # Step 6: Fill parameters using mapping dictionaries if defined
-        filled_params = {}
-        for key in required_keys:
-            value = params[key]
-            lookup_dict = getattr(cls, key.upper(), {})
-            filled_params[key] = (
-                lookup_dict.get(value, value)
-                if isinstance(lookup_dict, dict)
-                else value
-            )
-
-        # Step 7: Format and return prompt, including role at the beginning
-        try:
-            return f"{role} {template.format(**filled_params)}"
-        except KeyError as e:
-            raise ValueError(
-                f"Placeholder '{e.args[0]}' could not be resolved with parameters."
-            ) from e
         
+        combined_params = {}
+        for key in required_keys:
+            try:
+                # Neue Validierungslogik
+                value = cls._resolve_value(key, params)
+                combined_params[key] = value
+            except KeyError as e:
+                raise ValueError(f"Required parameter '{key}' is missing and no 'none' fallback is available") from e
+
+        base_prompt = f"{role} {template.format(**combined_params)}"
+        return cls._recursive_format(base_prompt, params, max_depth=3)
+
+    @classmethod
+    def _resolve_value(cls, key: str, params: dict) -> str:
+        """
+        Resolve the value for a given key using the class-level mapping dictionaries and provided parameters.
+
+        Args:
+            key (str): The parameter key to resolve.
+            params (dict): The dictionary of provided parameters.
+
+        Returns:
+            str: The resolved value for the key.
+
+        Raises:
+            KeyError: If the key is missing and no 'none' fallback is available.
+            ValueError: If a list item cannot be resolved.
+        """
+        lookup_dict = getattr(cls, key.upper(), {})
+        value = params.get(key, None)
+
+        # None-Fallback Mechanismus
+        if value is None:
+            if 'none' in lookup_dict:
+                return lookup_dict['none']
+            raise KeyError(f"Parameter '{key}' not provided and no 'none' fallback in {key.upper()}")
+
+        # Listenbehandlung mit erweiterter Validierung
+        if isinstance(value, list):
+            resolved_items = []
+            for item in value:
+                if item in lookup_dict:
+                    resolved_items.append(str(lookup_dict[item]))
+                elif item in params:
+                    resolved_items.append(str(params[item]))
+                else:
+                    raise ValueError(f"Value '{item}' in list for '{key}' not found")
+            return " ".join(resolved_items).strip()
+
+        return lookup_dict.get(value, params.get(value, value))
+
+    @classmethod
+    def _recursive_format(
+        cls, 
+        text: str, 
+        params: dict, 
+        depth: int = 0, 
+        max_depth: int = 3
+    ) -> str:
+        """
+        Recursively format a string with parameters, resolving nested placeholders up to a maximum depth.
+
+        Args:
+            text (str): The text to format.
+            params (dict): The dictionary of parameters for formatting.
+            depth (int): The current recursion depth.
+            max_depth (int): The maximum recursion depth allowed.
+
+        Returns:
+            str: The recursively formatted string.
+        """
+        if depth >= max_depth:
+            return text
+
+        placeholders = cls._extract_placeholders(text)
+        if not placeholders:
+            return text
+
+        resolved_params = {
+            p: cls._resolve_value(p, params)
+            for p in placeholders
+        }
+
+        new_text = text.format(**resolved_params)
+        
+        if new_text == text:  # No changes made
+            return text
+        
+        return cls._recursive_format(new_text, params, depth + 1, max_depth)
+   
     @classmethod
     def get_keys(cls, prompt_name: str) -> set:
         """
@@ -202,14 +276,71 @@ class PromptStore:
             return [key.lower() for key in cls.__dict__.keys() if isinstance(cls.__dict__[key], dict) and not key.startswith("__")]
 
 
+class PromptConfig(BaseModel):
+    """
+    Helper class to manage prompt configurations with easy override and retrieval.
+
+    Attributes:
+        _configs (Dict[str, Dict[str, Any]]): Internal dictionary storing prompt configurations.
+    """
+
+    _configs: Dict[str, Dict[str, Any]] = PrivateAttr(default_factory=dict)
+
+    def __init__(self, configs: Dict[str, Dict[str, Any]]):
+        """
+        Initialize PromptConfig with a dictionary of configurations.
+
+        Args:
+            configs (Dict[str, Dict[str, Any]]): Dictionary mapping prompt names to their configuration dictionaries.
+        """
+        self._configs = configs
+
+    def get(self, name: str, **overrides) -> Dict[str, Any]:
+        """
+        Retrieve a configuration by name, applying any overrides.
+
+        Args:
+            name (str): The name of the prompt configuration to retrieve.
+            **overrides: Key-value pairs to override in the configuration.
+
+        Returns:
+            Dict[str, Any]: The resulting configuration dictionary with overrides applied.
+        """
+        config = deepcopy(self._configs.get(name, {}))
+        config.update(overrides)
+        return config
+
+prompt_configs = PromptConfig({
+    "keyword_extraction": {
+        "object": "text",
+        "format": "string_list",
+        "recipient": "keyword_extractor",
+        "goal": "exact_matching",
+        "context": ["relevance_explanation", "number_limit"],
+        "min_keywords": 3,
+        "max_keywords": 5
+    },
+    "describe": {
+        "object": "image",
+        "format": "contextual_search",
+        "recipient": "ai_model"
+    },
+})
+
 if __name__ == "__main__":
+    # prompt = PromptStore.get_prompt(
+    #     "describe",
+    #     recipient="ai_model",
+    #     object="image",
+    #     format="contextual_search",
+    # )
+    # print(prompt)
+    # print(PromptStore.get_keys("describe"))
+    # print(PromptStore.get_available_template_keys("recipient"))
+    # print(PromptStore.get_all_template_keys())
+
     prompt = PromptStore.get_prompt(
-        "describe",
-        recipient="ai_model",
-        object="image",
-        format="contextual_search",
+    "keyword_extraction", 
+    **prompt_configs.get("keyword_extraction", max_keywords=3)
     )
     print(prompt)
-    print(PromptStore.get_keys("describe"))
-    print(PromptStore.get_available_template_keys("recipient"))
-    print(PromptStore.get_all_template_keys())
