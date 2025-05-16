@@ -4,25 +4,27 @@ from ai import PromptStore, prompt_configs, prompt
 from model import JiraBaseIssue
 from jira_tools import JiraHandler
 from rapidfuzz import fuzz
+from lib.logger import agent_logger as logger
 
 
 def keyword_search(
     query: str,
-    category: str = "summary",
+    category: List[str] = ["summary", "description"],
     match_mode: Literal["strict", "fuzzy", "contains"] = "strict",
     fuzzy_threshold: int = 85,
 ) -> List[JiraBaseIssue]:
     """
     Searches Jira issues based on extracted keywords and matches them 
-    using either strict or fuzzy matching against a specified text field.
+    using either strict or fuzzy matching against specified text fields.
 
     Args:
         query (str): The natural-language input from which keywords are extracted.
-        category (str): The attribute of the Jira issue to search in 
-                        (e.g., "summary", "description"). Defaults to "summary".
-        match_mode (Literal["strict", "fuzzy"]): 
+        category (List[str]): The attributes of the Jira issue to search in 
+                              (e.g., ["summary", "description"]). Defaults to ["summary", "description"].
+        match_mode (Literal["strict", "fuzzy", "contains"]): 
             - "strict": Exact keyword match (word boundary-based, case-insensitive).
             - "fuzzy": Token-level fuzzy matching using a similarity threshold.
+            - "contains": Substring match.
         fuzzy_threshold (int): Minimum similarity ratio (0–100) required for fuzzy matching. 
                                Only used if match_mode is "fuzzy". Defaults to 85.
 
@@ -41,9 +43,14 @@ def keyword_search(
         Returns:
             List[str]: A list of keywords extracted from the query.
         """
+
+        amount_of_sentences = len(re.findall(r"[.!?]", text))
+        if amount_of_sentences == 0:
+            amount_of_sentences = 1
+
         prompt_template = PromptStore.get_prompt(
             "keyword_extraction",
-            **prompt_configs.get("keyword_extraction", max_keywords=3)
+            **prompt_configs.get("keyword_extraction", min_keywords = amount_of_sentences + 1, max_keywords=2 * amount_of_sentences)
         )
         return [kw.strip() for kw in prompt(system_prompt=prompt_template, user_prompt=text).split(",")]
 
@@ -83,12 +90,16 @@ def keyword_search(
             raise ValueError(f"Unknown match_mode: {match_mode}")
 
     keywords = get_keywords(query)
+    logger.debug(f"Extracted keywords: {keywords}")
     hdlr = JiraHandler()
     issues = hdlr.fetch_and_parse_issues(jql="project=DATA")
 
     return [
         issue for issue in issues
-        if all(is_match(getattr(issue, category, ""), kw) for kw in keywords)
+        if all(
+            any(is_match(getattr(issue, cat, ""), kw) for cat in category)
+            for kw in keywords
+        )
     ]
 
 
@@ -100,28 +111,47 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 
+from keybert import KeyBERT
+
 # nltk.download('stopwords')
 # nltk.download('punkt_tab')
 
 def better_keyword_search(
     query: str,
-    category: str = ["summary", "description"],
+    category: List[str] = ["summary", "description"],
     match_mode: Literal["strict", "fuzzy", "contains"] = "fuzzy",
     fuzzy_threshold: int = 85,
-) -> List[JiraBaseIssue]:
+    max_keywords: int = 3
+) -> List["JiraBaseIssue"]:
+    
+    kw_model = KeyBERT()
+    # Extrahiere relevante Phrasen (1- bis 3-gram) mit Stoppwortfilter
+    extracted_keywords = kw_model.extract_keywords(
+        query,
+        keyphrase_ngram_range=(1, 2),
+        stop_words="english", 
+        use_maxsum=True,
+        nr_candidates=10,
+        top_n=3
+    )
+    
+    keywords = [kw for kw, _ in extracted_keywords]
+    logger.debug(f"Extracted keywords with KeyBERT: {keywords}")
 
-    stop_words = set(stopwords.words('english'))  # Oder andere Sprache
-    keywords = [word for word in word_tokenize(query) if word.lower() not in stop_words and word.isalnum()]
-
+    # Baue die JQL-Query
     jql_query = "project=DATA AND ("
     for i, keyword in enumerate(keywords):
+        # Erlaube Phrasen mit Anführungszeichen in JQL
         if match_mode == "strict":
-            jql_query += f"({' OR '.join([f'{field} ~ "{keyword}"' for field in category])})"
-        elif match_mode == "fuzzy" or match_mode == "contains":
-            jql_query += f"({' OR '.join([f'{field} ~ "{keyword}"' for field in category])})"
+            jql_query += f"({' OR '.join([f'{field} ~ \"\\\"{keyword}\\\"\"' for field in category])})"
+        else:  # fuzzy & contains behandeln wir gleich
+            jql_query += f"({' OR '.join([f'{field} ~ \"{keyword}\"' for field in category])})"
         if i < len(keywords) - 1:
             jql_query += " AND "
     jql_query += ")"
 
+    logger.debug(f"Generated JQL query: {jql_query}")
+
+    # Führe die Suche mit deinem Jira-Handler aus
     hdlr = JiraHandler()
     return hdlr.fetch_and_parse_issues(jql=jql_query)

@@ -17,9 +17,16 @@
 from agent_utils import keyword_search, better_keyword_search
 
 # res = keyword_search("test", "description", match_mode="fuzzy", fuzzy_threshold=65)
-res = keyword_search("test", category="description", match_mode="contains")
+res = keyword_search("Which tasks are related to expoloring the Agent Use Cases?", category=["summary", "description"], match_mode="strict")
 for i in res:
     print(f"=== {i.key} ===")
     print(f"Summary: {i.summary}")
     print(f"Description: {i.description}")
     print("=== END ===\n")
+
+# res = better_keyword_search("Which tasks are related to expoloring the Agent Use Cases?", category=["summary", "description"], match_mode="strict")
+# for i in res:
+#     print(f"=== {i.key} ===")
+#     print(f"Summary: {i.summary}")
+#     print(f"Description: {i.description}")
+#     print("=== END ===\n")

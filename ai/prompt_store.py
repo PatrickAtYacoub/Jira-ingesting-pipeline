@@ -74,9 +74,10 @@ class PromptStore:
     }
 
     CONTEXT = {
-        "none": "", # For when no additional context is needed. This is the default.
-        "relevance_explanation": "\"Relevant\" in this context means the most important topics or entities mentioned, excluding common words." ,
-        "number_limit": "Limit the number of keywords to between {min_keywords} and {max_keywords}."
+        "none": "",
+        "relevance_explanation": "\"Relevant\" in this context means the most important topics or entities mentioned, excluding common words and generic terms (e.g. 'task', 'thing', 'item', 'element').",
+        "number_limit": "Limit the number of keywords to between {min_keywords} and {max_keywords}.",
+        "no_generic_terms": "Focus only on content-carrying terms. Exclude generic or context-free words such as 'task', 'thing', 'item', or 'process'."
     }
 
     @classmethod
@@ -316,7 +317,7 @@ prompt_configs = PromptConfig({
         "format": "string_list",
         "recipient": "keyword_extractor",
         "goal": "exact_matching",
-        "context": ["relevance_explanation", "number_limit"],
+        "context": ["relevance_explanation", "no_generic_terms", "number_limit"],
         "min_keywords": 3,
         "max_keywords": 5
     },

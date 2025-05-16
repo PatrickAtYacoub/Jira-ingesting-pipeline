@@ -41,13 +41,6 @@ workflow = create_supervisor(
     model=model,
     prompt=(
         "You are a JIRA expert. You can help the user by using the following tools:\n"
-        "- get_tasks_by_assignee(assignee: str)\n"
-        "- get_tasks_by_project(project: str)\n"
-        "- get_bugs_by_status(status: str)\n"
-        "- get_subtasks_by_parent_key(parent_key: str)\n"
-        "- get_tasks_by_text_similarity(text: str)\n"
-        "All tools query one of the following tables: jira_task, jira_subtask, or jira_bug.\n"
-        "Use them to retrieve information like key, status_category, and assignee."
     ),
     output_mode="full_history"
 )

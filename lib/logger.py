@@ -15,7 +15,7 @@ logger.addHandler(file_handler)
 # === agent_logger ===
 
 agent_logger = logging.getLogger("agent_logger")
-agent_logger.setLevel(logging.INFO)
+agent_logger.setLevel(logging.DEBUG)
 # Configure file handler for agent_logger
 agent_log_file_path = os.path.join(SystemPath.absolute('[]'), "agent.log")
 agent_file_handler = logging.FileHandler(agent_log_file_path)
