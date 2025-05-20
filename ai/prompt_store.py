@@ -17,7 +17,8 @@ class PromptStore:
     ROLE = {
         "content_expert": "You are a helpful assistant specialized in content understanding.",
         "python_senior": "You are an experienced Python Senior Developer who is specialized in data science.",
-        "extractor": "You are an information extraction tool optimized for structured output."
+        "extractor": "You are an information extraction tool optimized for structured output.",
+        "jira_expert": "You are a JIRA expert with deep knowledge of Atlassian products, agile methodologies and project management best practices. You understand how to optimize workflows, create effective tickets, and manage project resources efficiently.",
     }
 
     TASK = {
@@ -36,6 +37,10 @@ class PromptStore:
         "keyword_extraction": {
             "role_key": "extractor",
             "template": "From the {object}, extract a list of relevant keywords suitable for {recipient}. {context}Return the result {format} optimized for {goal}."
+        },
+        "jira_support": {
+            "role_key": "jira_expert",
+            "template": "Respond to questions about {object} with high information density, focusing on {goal}. Provide {detail_level} explanations to {recipient}. {context}"
         }
 
     }
@@ -43,14 +48,24 @@ class PromptStore:
     OBJECT = {
         "image": "provided image",
         "document": "uploaded document",
-        "text": "given text"
+        "text": "given text",
+        "jira_general": "JIRA fundamentals, concepts, and best practices",
+        "jira_workflows": "JIRA workflow configuration, states, transitions, and automation",
+        "jira_queries": "JQL (JIRA Query Language) syntax, filters, and search strategies",
+        "jira_boards": "Sprint, Kanban, and Scrum board configuration and management",
+        "jira_automation": "JIRA automation rules, triggers, and integration capabilities",
+        "jira_reporting": "JIRA reporting, dashboards, and metrics analysis",
+        "jira_integration": "JIRA integration with other development and collaboration tools"
     }
 
     RECIPIENT = {
         "ai_model": "an AI model Processor for further analysis",
         "end_user": "a non-technical end user for better understanding",
         "search_index": "a semantic search index for optimized retrieval",
-        "keyword_extractor": "exact keyword matching (e.g. 'if word in text')"
+        "keyword_extractor": "exact keyword matching (e.g. 'if word in text')",
+        "jira_beginner": "an user who is new to JIRA and needs foundational explanations with minimal jargon.",
+        "jira_intermediate": "an user who has working knowledge of JIRA but may need clarification on advanced features.",
+        "jira_advanced": "a JIRA administrator or power user who needs sophisticated technical insights."
     }
 
     FORMAT = {
@@ -70,14 +85,28 @@ class PromptStore:
         "metadata_tagging": "metadata tagging",
         "semantic_indexing": "semantic indexing",
         "classification": "automated classification",
-        "exact_matching": "exact keyword matching"
+        "exact_matching": "exact keyword matching",
+        "practical_solutions": "actionable recommendations and practical solutions",
+        "technical_details": "technical implementation details and configuration steps",
+        "strategic_guidance": "strategic guidance and best practices for enterprise-scale deployment",
+        "efficiency_tips": "efficiency tips and productivity improvements",
+        "comparison": "comparative analysis of different approaches or configurations",
+        "information": "highly detailed information and insights",
     }
 
     CONTEXT = {
         "none": "",
-        "relevance_explanation": "\"Relevant\" in this context means the most important topics or entities mentioned, excluding common words and generic terms (e.g. 'task', 'thing', 'item', 'element').",
+        "relevance_explanation": "\"Relevant\" in this context means the most important topics or entities mentioned excluding common words and generic terms (e.g. 'task', 'thing', 'item', 'element').",
         "number_limit": "Limit the number of keywords to between {min_keywords} and {max_keywords}.",
-        "no_generic_terms": "Focus only on content-carrying terms. Exclude generic or context-free words such as 'task', 'thing', 'item', or 'process'."
+        "no_generic_terms": "Focus only on content-carrying terms. Exclude generic or context-free words such as 'task', 'thing', 'item', or 'process'.",
+        "exact_information": "Provide exact information without any additional context or explanation.",
+        "high_information_density": "Provide high information density, focusing on the most relevant details."
+    }
+
+    DETAIL_LEVEL = {
+        "concise": "concise",
+        "detailed": "comprehensive",
+        "step_by_step": "step-by-step"
     }
 
     @classmethod

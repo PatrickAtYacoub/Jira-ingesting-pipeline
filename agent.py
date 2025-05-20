@@ -12,6 +12,7 @@ from langgraph_supervisor import create_supervisor
 from langchain_openai import AzureChatOpenAI
 from agent_utils import tool_list
 from lib.logger import agent_logger as logger
+from ai.prompt_store import PromptStore
 
 checkpointer = InMemorySaver()
 store = InMemoryStore()
@@ -32,15 +33,21 @@ service_agent = create_react_agent(
     tools=tool_list,
     name="jira_query_agent",
     prompt="""You are a JIRA expert.
-    You can help users query the JIRA database using tools that accept single parameters like assignee, project, or status.
-    Use the tools to answer the user's question with relevant data."""
+   """
 )
 
 workflow = create_supervisor(
     [service_agent],
     model=model,
     prompt=(
-        "You are a JIRA expert. You can help the user by using the following tools:\n"
+        PromptStore.get_prompt(
+            "jira_support",
+            object="jira_reporting",
+            goal="information",
+            detail_level="concise",
+            recipient="jira_beginner",
+            context=["high_information_density", "exact_information"],
+        )
     ),
     output_mode="full_history"
 )

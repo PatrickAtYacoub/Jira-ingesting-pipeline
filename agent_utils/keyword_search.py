@@ -119,9 +119,7 @@ from keybert import KeyBERT
 def better_keyword_search(
     query: str,
     category: List[str] = ["summary", "description"],
-    match_mode: Literal["strict", "fuzzy", "contains"] = "fuzzy",
-    fuzzy_threshold: int = 85,
-    max_keywords: int = 3
+    match_mode: Literal["strict", "fuzzy", "contains"] = "contains",
 ) -> List["JiraBaseIssue"]:
     
     kw_model = KeyBERT()
