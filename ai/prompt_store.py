@@ -167,7 +167,7 @@ class PromptStore:
                 ) from e
 
         base_prompt = f"{role} {template.format(**combined_params)}"
-        return cls._recursive_format(base_prompt, params, max_depth=3)
+        return cls._recursive_format(base_prompt, params)
 
     @classmethod
     def _resolve_value(cls, key: str, params: dict) -> str:
@@ -212,35 +212,42 @@ class PromptStore:
 
     @classmethod
     def _recursive_format(
-        cls, text: str, params: dict, depth: int = 0, max_depth: int = 3
+        cls, text: str, params: dict, seen_keys: set = None
     ) -> str:
         """
-        Recursively format a string with parameters, resolving nested placeholders up to a maximum depth.
+        Recursively format a string with parameters, resolving nested placeholders using path-based cycle detection.
 
         Args:
             text (str): The text to format.
             params (dict): The dictionary of parameters for formatting.
-            depth (int): The current recursion depth.
-            max_depth (int): The maximum recursion depth allowed.
+            seen_keys (set): Set of keys that are currently in the formatting path to detect cycles.
 
         Returns:
-            str: The recursively formatted string.
-        """
-        if depth >= max_depth:
-            return text
+            str: The fully resolved string.
 
+        Raises:
+            ValueError: If a cyclic reference is detected.
+        """
+        seen_keys = seen_keys or set()
         placeholders = cls._extract_placeholders(text)
+
         if not placeholders:
             return text
 
-        resolved_params = {p: cls._resolve_value(p, params) for p in placeholders}
+        resolved_params = {}
 
-        new_text = text.format(**resolved_params)
+        for key in placeholders:
+            if key in seen_keys:
+                raise ValueError(f"Cyclic reference detected for placeholder: '{key}'")
+            seen_keys.add(key)
+            value = cls._resolve_value(key, params)
+            if isinstance(value, str) and "{" in value:
+                value = cls._recursive_format(value, params, seen_keys.copy())
+            resolved_params[key] = value
+            seen_keys.remove(key)
 
-        if new_text == text:  # No changes made
-            return text
+        return text.format(**resolved_params)
 
-        return cls._recursive_format(new_text, params, depth + 1, max_depth)
 
     @classmethod
     def get_keys(cls, prompt_name: str) -> set:
