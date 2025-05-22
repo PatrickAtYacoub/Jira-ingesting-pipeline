@@ -33,6 +33,9 @@ service_agent = create_react_agent(
     tools=tool_list,
     name="jira_query_agent",
     prompt="""You are a JIRA expert.
+    Just use the tool get_complete_issue if you already know the issue and can hand over the complete model.
+    Use this tool always if the user asks to get the complete issue model, for example comment data, latest authors and worklog activities.
+    You can get issue_keys from the tool keyword_search.
    """
 )
 
@@ -61,24 +64,21 @@ config = {"configurable": {"thread_id": "thread-1"}}
 
 def main():
     """
-    Main function to run the agent and process user input.
+    query = "Which tasks are related to expoloring the Agent Use Cases"
+    query = "Gibt es geänderte Versionen im issue DATA-167?"
     """
-    if len(sys.argv) > 1:
-        query = sys.argv[1]
-    else:
-        query = "Which tasks are related to expoloring the Agent Use Cases"
+    messages = []
+    while True:
+        user_input = input("Du: ")
+        if user_input.lower() in ("exit", "quit"):
+            break
+        messages.append({"role": "user", "content": user_input})
 
-    result = app.invoke({
-        "messages": [
-            {
-                "role": "user",
-                "content": query
-            }
-        ]
-    }, config=config)
-
-    for m in result["messages"]:
-        m.pretty_print()
+        result = app.invoke({"messages": messages}, config=config)
+        # Annahme: Die letzte Nachricht ist die Antwort des Agenten
+        agent_reply = result["messages"][-1].content
+        print("Agent:", agent_reply)
+        messages.append({"role": "assistant", "content": agent_reply})
 
 if __name__ == "__main__":
     main()

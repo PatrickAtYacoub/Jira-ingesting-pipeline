@@ -8,6 +8,7 @@ It also includes logging to track the success or failure of these operations.
 import os
 from dotenv import load_dotenv
 from db import VectorDB, DBConfig
+import json
 
 load_dotenv()
 
@@ -25,33 +26,5 @@ client = VectorDB(
     )
 )
 
-res = client.execute_sql(
-    """
-    SELECT key, status_category, assignee FROM jira_issue;
-    """
-)
-
-if res is None:
-    print("Table does not exist. Creating table...")
-else:
-    print(f"Found {len(res)} records in the 'jira_issue' table.")
-    sorted_keys = sorted(res, key=lambda x: x[1])
-    for key in sorted_keys:
-        print(f"{key[0]} is assigned to {key[2]} with status category {key[1]}")
-
-
-print()
-
-
-res_subtask_keys = client.execute_sql(
-    """
-    SELECT key, parent_key, assignee FROM jira_subtask;
-    """
-)
-if res_subtask_keys is None:
-    print("Table 'jira_subtask' does not exist.")
-else:
-    print(f"Found {len(res_subtask_keys)} records in the 'jira_subtask' table.")
-    sorted_subtask_keys = sorted(res_subtask_keys, key=lambda x: x[2])
-    for key in sorted_subtask_keys:
-        print(f"{key[0]} is a subtask of {key[1]} assigned to {key[2]}")
+res = client.describe_database()
+print(json.dumps(res, indent=4))

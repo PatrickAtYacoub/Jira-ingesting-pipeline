@@ -12,8 +12,6 @@ class PromptStore:
     The class provides methods to retrieve and format prompts based on predefined templates and dynamic parameters.
     It also includes functionality to extract placeholder names from templates and validate the presence of required parameters.
     If the value for a key is not found in the mapping dictionary, it will be used as is.
-
-    TODO: Should implement loop-detection (path-checking instead of depth-checking) for recursive formatting.
     """
 
     ROLE = {

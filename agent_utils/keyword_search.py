@@ -5,12 +5,13 @@ from model import JiraBaseIssue
 from jira_tools import JiraHandler
 from rapidfuzz import fuzz
 from lib.logger import agent_logger as logger
+import time
 
 
 def keyword_search(
     query: str,
     category: List[str] = ["summary", "description"],
-    match_mode: Literal["strict", "fuzzy", "contains"] = "strict",
+    match_mode: Literal["strict", "fuzzy", "contains"] = "contains",
     fuzzy_threshold: int = 85,
 ) -> List[JiraBaseIssue]:
     """
@@ -92,7 +93,10 @@ def keyword_search(
     keywords = get_keywords(query)
     logger.debug(f"Extracted keywords: {keywords}")
     hdlr = JiraHandler()
+    start = time.time()
     issues = hdlr.fetch_and_parse_issues(jql="project=DATA")
+    stop = time.time()
+    logger.debug(f"Fetched issues in {stop - start:.2f} seconds")
 
     return [
         issue for issue in issues
@@ -107,11 +111,11 @@ from typing import List, Literal
 from jira_tools import JiraHandler
 from rapidfuzz import fuzz
 import re
-import nltk
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+# import nltk
+# from nltk.corpus import stopwords
+# from nltk.tokenize import word_tokenize
 
-from keybert import KeyBERT
+# from keybert import KeyBERT
 
 # nltk.download('stopwords')
 # nltk.download('punkt_tab')
@@ -122,7 +126,7 @@ def better_keyword_search(
     match_mode: Literal["strict", "fuzzy", "contains"] = "contains",
 ) -> List["JiraBaseIssue"]:
     
-    kw_model = KeyBERT()
+    kw_model = None#KeyBERT()
     # Extrahiere relevante Phrasen (1- bis 3-gram) mit Stoppwortfilter
     extracted_keywords = kw_model.extract_keywords(
         query,

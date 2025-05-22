@@ -39,21 +39,21 @@ def main():
         len(epics) + len(stories) + len(tasks) + len(subtasks) + len(bugs),
     )
 
-    issue_data76 = [
-        issue for issue in parsed_issues if issue.key == "DATA-76"
+    import json
+    issue_data167 = [
+        issue for issue in parsed_issues if issue.key == "DATA-167"
     ][0]
 
-    import json
+    return
     attachement_hdlr = AttachementHandler(jira_client)
     print(json.dumps(attachement_hdlr.process_attachements(
-        issue_data76, save_file=True
+        issue_data167, save_file=True
     )))
     # for categorized_issues in parsed_issues:
     #     attachement_hdlr.process_attachements(
     #         categorized_issues, save_file=True
     #     )
 
-    return
 
     # Initialize DB and ingest
     db_client = VectorDB(
