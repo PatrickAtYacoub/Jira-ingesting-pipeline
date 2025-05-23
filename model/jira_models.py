@@ -77,6 +77,17 @@ class Author(BaseModel):
             str: The string representation of the author.
         """
         return f"{self.displayName} ({self.accountId})"
+    
+
+class JiraComment(BaseModel):
+    """
+    Represents a Jira comment.
+    Attributes:
+        author (str): The author of the comment.
+        body (str): The content of the comment.
+    """
+    author: str
+    body: str
 
 
 class JiraAttachement(BaseModel):
@@ -168,6 +179,7 @@ class JiraBaseIssue(BaseModel):
     statusCategory: str
     project: str
     issue_type: str
+    subtasks: list[str] = Field(default_factory=list)
     assignee: Optional[JiraUser]
     reporter: Optional[JiraUser]
     created: datetime
@@ -248,8 +260,6 @@ class JiraStory(JiraBaseIssue):
         subtasks (List[JiraSubtask]): A list of subtasks associated with the story.
     """
 
-    subtasks: List[JiraSubtask] = Field(default_factory=list)
-
     def to_string(self, detailed: bool = False) -> str:
         """
         Generates a string representation of the story.
@@ -276,7 +286,6 @@ class JiraTask(JiraBaseIssue):
         subtasks (List[JiraSubtask]): A list of subtasks associated with the task.
     """
 
-    subtasks: List[JiraSubtask] = Field(default_factory=list)
     parent_key: Optional[str] = None
     parent_description: Optional[str] = None
 

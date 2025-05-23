@@ -64,7 +64,28 @@ class JiraHandler:
         return categorized_issues
 
     def get_client(self) -> JIRA:
+        """
+        Returns the connected Jira client instance.
+        """
         return self.jira_client
+    
+    def get_all_projects(self) -> List[str]:
+        """
+        Retrieve all project keys from the connected Jira instance.
+
+        Returns:
+            List[str]: A list containing the keys of all projects available in the Jira instance.
+
+        Raises:
+            jira.exceptions.JIRAError: If there is an issue communicating with the Jira server.
+
+        Example:
+            >>> project_keys = handler.get_all_projects()
+            >>> print(project_keys)
+            ['PROJ1', 'PROJ2', 'PROJ3']
+        """
+        projects = self.jira_client.projects()
+        return [project.key for project in projects]
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

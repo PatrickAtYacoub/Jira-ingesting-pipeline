@@ -1,7 +1,14 @@
+"""
+__version__ = "1.0.0"
+__author__ = "Patrick Scheich"
+__date__ = datetime.now().strftime("%Y-%m-%d")
+"""
+
 import string
 from copy import deepcopy
 from pydantic import BaseModel, PrivateAttr
 from typing import Dict, Any
+from datetime import datetime
 
 
 class PromptStore:
@@ -19,6 +26,11 @@ class PromptStore:
         "python_senior": "You are an experienced Python Senior Developer who is specialized in data science.",
         "extractor": "You are an information extraction tool optimized for structured output.",
         "jira_expert": "You are a JIRA expert with deep knowledge of Atlassian products, agile methodologies and project management best practices. You understand how to optimize workflows, create effective tickets, and manage project resources efficiently.",
+        "supervisor_agent": "You are a supervisor agent orchestrating multiple specialized agents to gather, monitor, and summarize information efficiently.",
+        "translator": "You are a professional translator specialized in technical and domain-specific texts, maintaining accuracy and clarity.",
+        "reviewer": "You are a meticulous content reviewer focused on identifying inconsistencies and improving clarity.",
+        "python_software_engineer": "You are a software engineer with expertise in Python and data science, capable of writing and reviewing code.",
+        "expert_software_architect": "You are an expert software architect with deep knowledge of software design, architectural patterns, and best practices in software engineering."
     }
 
     TASK = {
@@ -42,6 +54,18 @@ class PromptStore:
             "role_key": "jira_expert",
             "template": "Respond to questions about {object} with high information density, focusing on {goal}. Provide {detail_level} explanations to {recipient}. {context}",
         },
+        "translate": {
+            "role_key": "translator",
+            "template": "Translate the {object} from {source_language} to {target_language} maintaining technical accuracy and clarity for {recipient}.",
+        },
+        "code_review": {
+            "role_key": "python_software_engineer",
+            "template": "Perform a code review of the {object}, focusing on {goal}. Provide actionable suggestions optimized for {recipient}. Return the result in {format}.",
+        },
+        "optimize_code_professional": {
+            "role_key": "expert_software_architect",
+            "template": "Optimize the {object} to a professional level. {context} Focus on {goal}. Provide the refactored code {format}.",
+        },
     }
 
     OBJECT = {
@@ -55,6 +79,12 @@ class PromptStore:
         "jira_automation": "JIRA automation rules, triggers, and integration capabilities",
         "jira_reporting": "JIRA reporting, dashboards, and metrics analysis",
         "jira_integration": "JIRA integration with other development and collaboration tools",
+        "code_snippet": "source code snippet",
+        "user_manual": "user manual or guide",
+        "meeting_notes": "meeting notes or minutes",
+        "product_specification": "product specification document",
+        "translator_team": "a professional translation team requiring domain-specific terminology",
+        "review_team": "a quality assurance team focused on document accuracy and clarity",
     }
 
     RECIPIENT = {
@@ -65,6 +95,11 @@ class PromptStore:
         "jira_beginner": "an user who is new to JIRA and needs foundational explanations with minimal jargon.",
         "jira_intermediate": "an user who has working knowledge of JIRA but may need clarification on advanced features.",
         "jira_advanced": "a JIRA administrator or power user who needs sophisticated technical insights.",
+        "code": "a professional coding project with high standards of clarity, reusability and maintainability",
+        "junior_developer": "a junior developer to guide them in improving their coding skills",
+        "senior_developer": "a senior developer for a critical peer review, focusing on architectural implications and complex logic",
+        "lead_developer": "a lead developer for final approval, ensuring alignment with project standards and long-term vision",
+        "code_base_integrator": "a developer responsible for integrating the optimized code into an existing codebase",
     }
 
     FORMAT = {
@@ -72,12 +107,18 @@ class PromptStore:
         "structured_data": "as a list of structured data items (do not use code blocks or markdown formatting)",
         "summary": "as a concise summary (do not use code blocks or markdown formatting)",
         "string_list": "as a plain list of strings, separated by commas or line breaks, without any code blocks or markdown formatting",
+        "markdown": "formatted in markdown for readability",
+        "json": "as JSON structured data",
+        "plain_text": "as plain text without formatting",
+        "code": "as a fully optimized code snippet, ready for direct integration, with comments explaining significant changes",
     }
 
     PURPOSE = {
         "training": "fine-tuning a language model",
         "retrieval": "improving search accuracy",
         "human_reading": "human readability",
+        "reporting": "preparing information for reporting purposes",
+        "translation": "translation accuracy and fidelity",
     }
 
     GOAL = {
@@ -91,6 +132,17 @@ class PromptStore:
         "efficiency_tips": "efficiency tips and productivity improvements",
         "comparison": "comparative analysis of different approaches or configurations",
         "information": "highly detailed information and insights",
+        "quality_assurance": "quality assurance and error detection",
+        "workflow_optimization": "workflow optimization and process improvement",
+        "code": "robust, reusable, expandable code",
+        "code_quality": "code quality, adherence to best practices, and potential for bugs",
+        "performance_optimization": "performance bottlenecks and opportunities for optimization",
+        "security_vulnerabilities": "security vulnerabilities and potential exploits",
+        "maintainability_scalability": "maintainability, readability, and scalability",
+        "architectural_soundness": "architectural soundness and adherence to established software architecture principles",
+        "design_pattern_application": "correct and idiomatic application of relevant design patterns",
+        "best_practice_adherence": "adherence to industry best practices for robust and clean code",
+        "refactoring_for_clarity": "refactoring for improved clarity, simplicity, and elegance",
     }
 
     CONTEXT = {
@@ -100,12 +152,23 @@ class PromptStore:
         "no_generic_terms": "Focus only on content-carrying terms. Exclude generic or context-free words such as 'task', 'thing', 'item', or 'process'.",
         "exact_information": "Provide exact information without any additional context or explanation.",
         "high_information_density": "Provide high information density, focusing on the most relevant details.",
+        "confidentiality_reminder": "Remember to exclude any confidential or sensitive information.",
+        "format_instructions": "Follow strict formatting guidelines as per the recipient's requirements.",
+        "common_software_patterns": "Apply widely accepted software design patterns (e.g., Singleton, Factory, Strategy, Observer) and architectural patterns (e.g., MVC, Microservices, Layered Architecture).",
+        "clean_code_principles": "Apply principles of clean code (e.g., meaningful names, functions that do one thing, no duplication).",
+        "solid_principles_applied": "Ensure adherence to SOLID principles (Single Responsibility, Open/Closed, Liskov Substitution, Interface Segregation, Dependency Inversion).",
+        "dry_principle_applied": "Adhere to the DRY (Don't Repeat Yourself) principle.",
+        "idiomatic_code_style": "Ensure the code adheres to idiomatic practices and coding style for the given programming language.",
+        "performance_considerations": "Consider performance implications and optimize where necessary.",
+        "security_considerations": "Review for and mitigate potential security vulnerabilities.",
+        "readability_maintainability": "Prioritize readability, maintainability, and scalability.",
     }
 
     DETAIL_LEVEL = {
         "concise": "concise",
         "detailed": "comprehensive",
         "step_by_step": "step-by-step",
+        "high_level": "high-level overview",
     }
 
     @staticmethod
@@ -161,7 +224,8 @@ class PromptStore:
                 combined_params[key] = value
             except KeyError as e:
                 raise ValueError(
-                    f"Required parameter '{key}' is missing and no 'none' fallback is available"
+                    f"Required parameter '{key}' is missing and no 'none' fallback is available.\n" 
+                    f"Consider one of the following: \n{',\n'.join(PromptStore.get_key_values(key))}"
                 ) from e
 
         base_prompt = f"{role} {template.format(**combined_params)}"
@@ -204,7 +268,15 @@ class PromptStore:
                     resolved_items.append(str(params[item]))
                 else:
                     raise ValueError(f"Value '{item}' in list for '{key}' not found")
-            return " ".join(resolved_items).strip()
+            
+            # Verbesserte Formatierung für Listen: Komma und 'und'
+            if len(resolved_items) == 1:
+                return resolved_items[0]
+            elif len(resolved_items) == 2:
+                return f"{resolved_items[0]} and {resolved_items[1]}"
+            elif len(resolved_items) > 2:
+                return f"{', '.join(resolved_items[:-1])}, and {resolved_items[-1]}"
+            return ""
 
         return lookup_dict.get(value, params.get(value, value))
 
@@ -269,25 +341,6 @@ class PromptStore:
         return cls._extract_placeholders(template)
 
     @classmethod
-    def get_available_template_keys(cls, key: str) -> set:
-        """
-        Get all available keys of the specified template dictionary.
-
-        Args:
-            key (str): The name of the template dictionary (e.g., 'recipient').
-
-        Returns:
-            set: A set of all available keys in the specified template dictionary.
-
-        Raises:
-            ValueError: If the specified key does not correspond to a valid template dictionary.
-        """
-        template_dict = getattr(cls, key.upper(), None)
-        if not isinstance(template_dict, dict):
-            raise ValueError(f"'{key}' is not a valid template dictionary.")
-        return set(template_dict.keys())
-
-    @classmethod
     def get_all_template_keys(cls, only_key=True) -> dict:
         """
         Get all available template dictionaries.
@@ -311,6 +364,28 @@ class PromptStore:
                 for key in cls.__dict__.keys()
                 if isinstance(cls.__dict__[key], dict) and not key.startswith("__")
             ]
+        
+    @classmethod
+    def get_key_values(cls, key: str, only_keys=True) -> list:
+        """
+        Get all available values for a specific key in the template dictionaries.
+
+        Args:
+            key (str): The name of the key to retrieve values for.
+
+        Returns:
+            list: A list of all available values for the specified key.
+
+        Raises:
+            ValueError: If the specified key does not correspond to a valid template dictionary.
+        """
+        template_dict = getattr(cls, key.upper(), None)
+        if not isinstance(template_dict, dict):
+            raise ValueError(f"'{key}' is not a valid template dictionary.")
+        if only_keys:
+            return list(template_dict.keys())
+        else:
+            return list({"key": key, "value": value} for key, value in template_dict.items())
 
 
 class PromptConfig(BaseModel):
@@ -346,7 +421,27 @@ class PromptConfig(BaseModel):
         config = deepcopy(self._configs.get(name, {}))
         config.update(overrides)
         return config
+    
+    def get_configs(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Retrieve all configurations.
 
+        Returns:
+            Dict[str, Dict[str, Any]]: The complete dictionary of prompt configurations.
+        """
+        return self._configs
+    
+    def get_keys(self, only_keys=True) -> list:
+        """
+        Get all available keys for the prompt configurations.
+
+        Args:
+            only_keys (bool): If True, return only the keys of the prompt configurations.
+
+        Returns:
+            list: A list of all available keys or a dictionary of key-value pairs.
+        """
+        return list(self._configs.keys())
 
 prompt_configs = PromptConfig(
     {
@@ -364,6 +459,18 @@ prompt_configs = PromptConfig(
             "format": "contextual_search",
             "recipient": "ai_model",
         },
+        "refine_code": {
+            "object": "code_snippet",
+            "format": "markdown",
+            "recipient": "senior_developer",
+            "goal": ["code_quality", "maintainability_scalability", "performance_optimization"],
+        },
+        "professional_code_optimization": {
+            "object": "code_snippet",
+            "format": "code",
+            "context": ["clean_code_principles", "solid_principles_applied", "dry_principle_applied", "idiomatic_code_style", "common_software_patterns", "performance_considerations", "security_considerations", "readability_maintainability"],
+            "goal": ["architectural_soundness", "design_pattern_application", "best_practice_adherence", "refactoring_for_clarity"],
+        },
     }
 )
 
@@ -371,21 +478,34 @@ prompt_configs = PromptConfig(
 if __name__ == "__main__":
 
     def main():
-        # print(PromptStore.get_available_template_keys("recipient"))
-        # prompt = PromptStore.get_prompt(
-        #     "describe",
-        #     recipient="ai_model",
-        #     object="image",
-        #     format="contextual_search",
-        # )
-        # print(prompt)
+        # object_keys = PromptStore.get_key_values("object")
+        # print(object_keys)
+        prompt = PromptStore.get_prompt(
+            "describe",
+            recipient="ai_model",
+            object="image",
+            format="contextual_search",
+        )
+
+        prompt = PromptStore.get_prompt(
+            "code_review",
+            **prompt_configs.get("refine_code"),
+        )
+
+        professional_optimization_prompt = PromptStore.get_prompt(
+            "optimize_code_professional",
+            **prompt_configs.get("professional_code_optimization"),
+        )
+        print("\n--- Professional Code Optimization Prompt ---")
+        print(professional_optimization_prompt)
+        print(prompt)
         # print(PromptStore.get_keys("describe"))
         # print(PromptStore.get_all_template_keys(only_key=False))
 
-        prompt = PromptStore.get_prompt(
-            "keyword_extraction",
-            **prompt_configs.get("keyword_extraction", max_keywords=3),
-        )
-        print(prompt)
+        # prompt = PromptStore.get_prompt(
+        #     "keyword_extraction",
+        #     **prompt_configs.get("keyword_extraction", max_keywords=3),
+        # )
+        # print(prompt)
 
     main()

@@ -11,7 +11,8 @@ from .issue_context_tools import (
 from .keyword_search import keyword_search, better_keyword_search
 
 from .issue_tools import (
-    get_complete_issue
+    get_complete_issue,
+    connected_issues_for_key
 )
 
 tool_list = [
@@ -22,7 +23,8 @@ tool_list = [
         # get_tasks_by_description_similarity,
         # get_tasks_and_subtasks_by_summary_similarity
         keyword_search,
-        get_complete_issue
+        get_complete_issue,
+        connected_issues_for_key
     ]
 
 __all__ = [

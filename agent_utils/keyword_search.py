@@ -10,7 +10,7 @@ import time
 
 def keyword_search(
     query: str,
-    category: List[str] = ["summary", "description"],
+    category: List[str] = ["summary", "description", "key"],
     match_mode: Literal["strict", "fuzzy", "contains"] = "contains",
     fuzzy_threshold: int = 85,
 ) -> List[JiraBaseIssue]:

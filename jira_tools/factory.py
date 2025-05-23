@@ -148,6 +148,7 @@ class JiraFactory:
             "reporter": JiraFactory.parse_user(
                 JiraFactory.get_field(issue_fields, "reporter", is_dict)
             ),
+            "subtasks": [task.key for task in JiraFactory.get_field(issue_fields, "subtasks", is_dict, [])],
             "created": JiraFactory.get_field(issue_fields, "created", is_dict),
             "updated": JiraFactory.get_field(issue_fields, "updated", is_dict),
             "timeSpentSeconds": JiraFactory.get_field(
